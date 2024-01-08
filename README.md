@@ -25,6 +25,12 @@ public override void OnEngineInit()
 
 Then whenever you want to hot reload the mod you would call `HotReloader.HotReload(Type unloadType)` where `unloadType` is the type of your mod class which inherits `ResoniteMod`.
 
+Example:
+
+```
+HotReloader.HotReload(typeof(YourResoniteModTypeHere));
+```
+
 ## You also need to implement two new methods in your mod class:
 
 `static void BeforeHotReload()`
