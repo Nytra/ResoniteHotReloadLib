@@ -1,6 +1,8 @@
 # ResoniteHotReloadLib
 
-Library for Resonite mod developers to hot reload their mods
+Library for Resonite mod developers to hot reload their mods.
+
+This is for convenience of development and WILL result in increased memory usage and possibly other issues which are unknown at this time.
 
 ## Usage
 
