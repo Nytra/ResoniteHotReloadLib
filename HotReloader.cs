@@ -112,7 +112,7 @@ namespace ResoniteHotReloadLib
             }
 
             Msg("Calling BeforeHotReload method...");
-            unloadMethod.Invoke(modInstance, new object[] { });
+            unloadMethod.Invoke(null, new object[] { });
 
             string dllPath = GetDLLPath(modInstance.GetType());
 
