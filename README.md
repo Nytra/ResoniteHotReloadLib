@@ -35,11 +35,11 @@ HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 
 ## You also need to implement two new methods in your mod class:
 
-`static void BeforeHotReload()`
+`static void BeforeHotReload()` : Unload your mod here
 
 and 
 
-`static void OnHotReload(ResoniteMod modInstance)`
+`static void OnHotReload(ResoniteMod modInstance)` : Setup your mod here
 
 Example:
 
