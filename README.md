@@ -65,4 +65,4 @@ Example:
 HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 ```
 
-Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type! It should be the most recently loaded type of your mod.
+Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
