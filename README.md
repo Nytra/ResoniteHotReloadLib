@@ -30,7 +30,7 @@ static void OnHotReload(ResoniteMod modInstance)
 {
     // Get the config
     config = modInstance.GetConfiguration();
-    // After this you can setup your mod again...
+    // Now you can setup your mod again
 }
 ```
 
