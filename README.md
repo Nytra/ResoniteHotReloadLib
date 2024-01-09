@@ -1,6 +1,6 @@
 # ResoniteHotReloadLib
 
-## This has not been tested much. Use at your own risk
+## Use at your own risk
 
 Library for Resonite mod developers to hot reload their mods.
 
