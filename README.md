@@ -37,6 +37,8 @@ Example:
 HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 ```
 
+Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
+
 ## You also need to implement two new methods in your mod class:
 
 `static void BeforeHotReload()` : Unload your mod here
