@@ -8,6 +8,34 @@ This is for convenience of development and WILL result in increased memory usage
 
 It uses basically the same hot reload method as BepInEx which you can find here: https://github.com/BepInEx/BepInEx.Debug/blob/1a079418674cbbaae5d34fb2055fd77c795ee900/src/ScriptEngine/ScriptEngine.cs#L117
 
+## Pre-requisites
+
+You will need to implement two new methods in your mod class:
+
+`static void BeforeHotReload()` : Unload your mod here
+
+and 
+
+`static void OnHotReload(ResoniteMod modInstance)` : Setup your mod here
+
+Example:
+
+```
+static void BeforeHotReload()
+{
+    // This is where you unload your mod and remove Harmony patches etc.
+}
+
+static void OnHotReload(ResoniteMod modInstance)
+{
+    // Get the config
+    config = modInstance.GetConfiguration();
+    // After this you can setup your mod again...
+}
+```
+
+If these methods do not exist in your mod class then the hot reload will not work!
+
 ## Usage
 
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
@@ -38,29 +66,3 @@ HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 ```
 
 Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
-
-## You also need to implement two new methods in your mod class:
-
-`static void BeforeHotReload()` : Unload your mod here
-
-and 
-
-`static void OnHotReload(ResoniteMod modInstance)` : Setup your mod here
-
-Example:
-
-```
-static void BeforeHotReload()
-{
-    // This is where you unload your mod and remove Harmony patches etc.
-}
-
-static void OnHotReload(ResoniteMod modInstance)
-{
-    // Get the config
-    config = modInstance.GetConfiguration();
-    // After this you can setup your mod again...
-}
-```
-
-If these methods do not exist in your mod class then the hot reload will not work.
