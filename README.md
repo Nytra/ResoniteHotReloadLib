@@ -19,9 +19,9 @@ using ResoniteHotReloadLib;
 
 public override void OnEngineInit()
 {
-    ...
+    // ...
     HotReloader.RegisterForHotReload(this);
-    ...
+    // ...
 }
 ```
 
@@ -51,11 +51,9 @@ static void BeforeHotReload()
 
 static void OnHotReload(ResoniteMod modInstance)
 {
-    ...
     // Get the config
     config = modInstance.GetConfiguration();
     // After this you can setup your mod again...
-    ...
 }
 ```
 
