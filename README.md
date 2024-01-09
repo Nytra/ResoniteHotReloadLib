@@ -6,6 +6,8 @@ Library for Resonite mod developers to hot reload their mods.
 
 This is for convenience of development and WILL result in increased memory usage and possibly other issues which are unknown at this time.
 
+It uses the same hot reload method as BepInEx which you can find here: https://github.com/BepInEx/BepInEx.Debug/blob/1a079418674cbbaae5d34fb2055fd77c795ee900/src/ScriptEngine/ScriptEngine.cs#L117
+
 ## Usage
 
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
