@@ -27,7 +27,7 @@ Example:
 ```
 static void BeforeHotReload()
 {
-    // This is where you unload your mod and remove Harmony patches etc.
+    // This is where you unload your mod, free up memory, and remove Harmony patches etc.
 }
 
 static void OnHotReload(ResoniteMod modInstance)
