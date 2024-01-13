@@ -10,7 +10,9 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 
 ## Pre-requisites
 
-You will need to implement two new methods in your mod class:
+Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
+
+You will also need to implement two new methods in your mod class:
 
 `static void BeforeHotReload()` : Unload your mod here
 
@@ -37,8 +39,6 @@ static void OnHotReload(ResoniteMod modInstance)
 If these methods do not exist in your mod class then the hot reload will not work!
 
 ## Usage
-
-Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
 Add this library as a dependency in your mod, then call `HotReloader.RegisterForHotReload(ResoniteMod modInstance)` where `modInstance` is the instance of your mod class.
 
