@@ -72,3 +72,5 @@ HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 ```
 
 Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
+
+There is some example mod code for hot reloading here: https://github.com/Nytra/ResoniteHotReloadLib/blob/main/ExampleMod/ExampleMod.cs
