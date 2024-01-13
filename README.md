@@ -13,7 +13,9 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
 You can do this with a PostBuildEvent in Visual Studio
+
 (Notice how it copies to `HotReloadMods` first, because if Resonite is open it can't overwrite the file in `rml_mods`)
+
 (The newline between copy commands is important)
 
 ![Screenshot 2024-01-13 193220](https://github.com/Nytra/ResoniteHotReloadLib/assets/14206961/427f9f36-2324-450e-bb6a-044ba6071ff0)
