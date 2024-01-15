@@ -12,7 +12,7 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 
 Currently there is no way to create a new ModConfiguration from the newly loaded assembly. So if you try to add new config keys it won't work.
 
-If you are using ConfigurationChangedEvents make sure you are comparing them by name and not by object type because they will not match.
+If you are using ConfigurationChangedEvents make sure you are comparing them by name and not by object because they will not match.
 
 ## Pre-requisites
 
