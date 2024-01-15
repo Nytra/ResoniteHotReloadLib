@@ -8,6 +8,10 @@ This is for convenience of development and WILL result in increased memory usage
 
 It uses basically the same hot reload method as BepInEx which you can find here: https://github.com/BepInEx/BepInEx.Debug/blob/1a079418674cbbaae5d34fb2055fd77c795ee900/src/ScriptEngine/ScriptEngine.cs#L117
 
+## Known Issues
+
+Currently changing config key definitions in your code and then hot reloading doesn't work. This is because the reloader doesn't create a new config from the new assembly. I will try to find a way to fix this.
+
 ## Pre-requisites
 
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
@@ -18,13 +22,13 @@ You can do this with a PostBuildEvent in Visual Studio.
 
 You will need to put `ResoniteHotReloadLib.dll` in `rml_mods` and `HotReloadMods` folders so the mods in there can access it.
 
-You will also need to implement two new methods in your mod class:
+### You will also need to implement two new methods in your mod class:
 
-`static void BeforeHotReload()` : Unload your mod here
+`static void BeforeHotReload()`
 
 and 
 
-`static void OnHotReload(ResoniteMod modInstance)` : Setup your mod here
+`static void OnHotReload(ResoniteMod modInstance)`
 
 Example:
 
