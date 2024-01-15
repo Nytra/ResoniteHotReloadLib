@@ -10,7 +10,9 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 
 ## Known Issues
 
-Currently changing config key definitions in your code and then hot reloading and trying to use them doesn't work. This is because the hot reloader doesn't yet create a new config from the new assembly, so the config will still be using the old keys. I will try to find a way to fix this.
+Currently there is no way to create a new ModConfiguration from the newly loaded assembly. So if you try to add new config keys it won't work.
+
+If you are using ConfigurationChangedEvents make sure you are comparing them by name and not by object type because they will not match.
 
 ## Pre-requisites
 
