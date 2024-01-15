@@ -10,7 +10,7 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 
 ## Known Issues
 
-Currently changing config key definitions in your code and then hot reloading doesn't work. This is because the reloader doesn't create a new config from the new assembly. I will try to find a way to fix this.
+Currently changing config key definitions in your code and then hot reloading and trying to use them doesn't work. This is because the hot reloader doesn't yet create a new config from the new assembly, so the config will still be using the old keys. I will try to find a way to fix this.
 
 ## Pre-requisites
 
