@@ -13,15 +13,21 @@ namespace ResoniteHotReloadLib
 {
 	public static class HotReloader
 	{
-		static readonly List<ResoniteMod> HotReloadMods = new List<ResoniteMod>(); // list of mods setup for hot reloading
+		// list of mods setup for hot reloading
+		// this probably doesn't need to be a list and could just be a reference to a single ResoniteMod
+		// since the library right now is used by just one mod at a time and not multiple
+		// but since I might try to integrate this into RML in the future it would be better to keep this as a list IMO
+		static readonly List<ResoniteMod> HotReloadMods = new List<ResoniteMod>();
 
 		static void Msg(string str) => ResoniteMod.Msg(str);
 		static void Error(string str) => ResoniteMod.Error(str);
+		static void Debug(string str) => ResoniteMod.Debug(str);
+		static void Warn(string str) => ResoniteMod.Warn(str);
 
 		private static void PrintTypeInfo(Type t)
 		{
-			Msg("Type Assembly FullName: " + t.Assembly.FullName);
-			Msg("Type FullName: " + t.FullName);
+			Debug("Type Assembly FullName: " + t.Assembly.FullName);
+			Debug("Type FullName: " + t.FullName);
 		}
 
 		private static string GetDLLPath(Type modInstanceType)
@@ -65,8 +71,8 @@ namespace ResoniteHotReloadLib
 
 		public static void RegisterForHotReload(ResoniteMod mod)
 		{
-			Msg("Begin RegisterForHotReload.");
-			Msg("Mod instance type info:");
+			Debug("Begin RegisterForHotReload.");
+			Debug("Mod instance type info:");
 			PrintTypeInfo(mod.GetType());
 			if (!HotReloadMods.Contains(mod))
 			{
@@ -79,57 +85,101 @@ namespace ResoniteHotReloadLib
 			}
 		}
 
-		private static ResoniteMod ReinitializeMod(ResoniteMod originalModInstance, string newDllPath, Assembly newAssembly)
+		// Uses a lot of reflection to initialize the mod via RML and the register it
+		// This needs to create a new instance of AssemblyFile, give it the new values and then pass it to InitializeMod
+		// Then it also registers the mod with RML so that the new mod will show up in ModLoader.Mods
+		// This also makes it so when the new mod uses logging it will show the name of the mod in the log string
+		private static ResoniteMod InitializeAndRegisterMod(ResoniteMod originalModInstance, string newDllPath, Assembly newAssembly)
 		{
-			Msg("Begin ReinitializeMod.");
+			Debug("Begin InitializeAndRegisterMod.");
 
-			Msg("Getting loadedResoniteMod from original ResoniteMod instance...");
-			var origLoadedResoniteMod = AccessTools.Field(typeof(ResoniteModBase), "loadedResoniteMod").GetValue(originalModInstance);
+			Debug("Getting original loadedResoniteMod...");
+			var origLoadedResoniteMod = GetLoadedResoniteMod(originalModInstance);
+			if (origLoadedResoniteMod == null) return null;
 
-			Msg("Getting AssemblyFile from loadedResoniteMod...");
-			var origAssemblyFile = AccessTools.Property(origLoadedResoniteMod.GetType(), "ModAssembly").GetValue(origLoadedResoniteMod);
+			Debug("Getting original AssemblyFile...");
+			var origAssemblyFile = AccessTools.Property(origLoadedResoniteMod.GetType(), "ModAssembly")?.GetValue(origLoadedResoniteMod);
+			if (origAssemblyFile == null) return null;
 
-			Msg("Creating new AssemblyFile instance...");
+			Debug("Creating new AssemblyFile instance...");
 			var newAssemblyFile = AccessTools.CreateInstance(origAssemblyFile.GetType());
+			if (newAssemblyFile == null) return null;
 
-			Msg("Setting new AssemblyFile values...");
-			AccessTools.Field(newAssemblyFile.GetType(), "<File>k__BackingField").SetValue(newAssemblyFile, newDllPath);
-			AccessTools.Property(newAssemblyFile.GetType(), "Assembly").SetValue(newAssemblyFile, newAssembly);
-			AccessTools.Field(newAssemblyFile.GetType(), "sha256").SetValue(newAssemblyFile, null);
+			FieldInfo fileField = AccessTools.Field(newAssemblyFile.GetType(), "<File>k__BackingField");
+			PropertyInfo assemblyProperty = AccessTools.Property(newAssemblyFile.GetType(), "Assembly");
+			FieldInfo sha256Field = AccessTools.Field(newAssemblyFile.GetType(), "sha256");
 
-			Msg("Invoking InitializeMod method...");
-			var newLoadedResoniteMod = AccessTools.Method(typeof(ModLoader), "InitializeMod").Invoke(null, new object[] { newAssemblyFile });
+			Debug("Setting AssemblyFile values...");
+			if (!TrySetFieldValue(fileField, newAssemblyFile, newDllPath)) return null;
+			if (!TrySetPropertyValue(assemblyProperty, newAssemblyFile, newAssembly)) return null;
+			if (!TrySetFieldValue(sha256Field, newAssemblyFile, null)) return null;
 
-			Msg("Getting new ResoniteMod from new LoadedResoniteMod...");
-			var newResoniteMod = (ResoniteMod)AccessTools.Property(origLoadedResoniteMod.GetType(), "ResoniteMod").GetValue(newLoadedResoniteMod);
+			Debug("Invoking InitializeMod method...");
+			var newLoadedResoniteMod = AccessTools.Method(typeof(ModLoader), "InitializeMod")?.Invoke(null, new object[] { newAssemblyFile });
+			if (newLoadedResoniteMod == null) return null;
 
-			Msg("Setting FinishedLoading to true in new ResoniteMod instance...");
-			AccessTools.Property(newResoniteMod.GetType(), "FinishedLoading").SetValue(newResoniteMod, true);
+			Debug("Getting new ResoniteMod...");
+			var newResoniteMod = (ResoniteMod)AccessTools.Property(origLoadedResoniteMod.GetType(), "ResoniteMod")?.GetValue(newLoadedResoniteMod);
+			if (newResoniteMod == null) return null;
 
-			Msg("Setting loadedResoniteMod in new ResoniteMod instance");
-			AccessTools.Field(typeof(ResoniteModBase), "loadedResoniteMod").SetValue(newResoniteMod, newLoadedResoniteMod);
+			// Below code emulates ModLoader.RegisterMod();
+			// However it skips adding the mod name to ModNameLookupMap since that would block hot reloading
 
-			Msg("Updating config definition...");
-			UpdateConfigDefinition(newResoniteMod, originalModInstance.GetConfiguration());
-
-			Msg("Adding loadedResoniteMod to loadedMods...");
-			var loadedMods = (IList)AccessTools.Field(typeof(ModLoader), "LoadedMods").GetValue(null);
+			// Makes the new mod show up in ModLoader.Mods
+			Debug("Updating LoadedMods...");
+			var loadedMods = (IList)AccessTools.Field(typeof(ModLoader), "LoadedMods")?.GetValue(null);
+			if (loadedMods == null) return null;
 			loadedMods.Add(newLoadedResoniteMod);
 
-			Msg("Adding ResoniteMod to assemblyLookupMap...");
-			var assemblyLookupMap = (IDictionary)AccessTools.Field(typeof(ModLoader), "AssemblyLookupMap").GetValue(null);
+			// Makes it so when using logging the mod name will show up in the string
+			Debug("Updating AssemblyLookupMap...");
+			var assemblyLookupMap = (IDictionary)AccessTools.Field(typeof(ModLoader), "AssemblyLookupMap")?.GetValue(null);
+			if(assemblyLookupMap == null) return null;
 			assemblyLookupMap.Add(newAssembly, newResoniteMod);
 
-			Msg("Returning new ResoniteMod instance...");
+			FieldInfo loadedResoniteModField = AccessTools.Field(typeof(ResoniteModBase), "loadedResoniteMod");
+
+			Debug("Setting loadedResoniteMod...");
+			if (!TrySetFieldValue(loadedResoniteModField, newResoniteMod, newLoadedResoniteMod)) return null;
+
+			// Makes the config accessible
+			Debug("Setting FinishedLoading to true...");
+			PropertyInfo finishedLoadingProperty = AccessTools.Property(newResoniteMod.GetType(), "FinishedLoading");
+			if (!TrySetPropertyValue(finishedLoadingProperty, newResoniteMod, true)) return null;
+
+			Debug("Returning new ResoniteMod instance...");
 			return newResoniteMod;
 		}
 
-		private static void UpdateConfigDefinition(ResoniteMod newResoniteMod, ModConfiguration oldConfig)
-		{
-			Msg("Begin UpdateConfigDefinition.");
+		//private static ModConfigurationDefinition BuildConfigDefinition(ResoniteMod modInstance)
+		//{
+		//	var newConfigDefinition = (ModConfigurationDefinition)AccessTools.Method(typeof(ResoniteMod), "BuildConfigurationDefinition")?.Invoke(modInstance, new object[] { });
+		//	return newConfigDefinition;
+		//}
 
-			Msg("Invoking BuildConfigurationDefinition for new mod...");
-			var newConfigDefinition = (ModConfigurationDefinition)AccessTools.Method(typeof(ResoniteMod), "BuildConfigurationDefinition").Invoke(newResoniteMod, new object[] { });
+		private static ModConfigurationDefinition GetConfigDefinition(ModConfiguration modConfig)
+		{
+			var configDefinition = (ModConfigurationDefinition)AccessTools.Field(typeof(ModConfiguration), "Definition")?.GetValue(modConfig);
+			return configDefinition;
+		}
+
+		private static object GetLoadedResoniteMod(ResoniteModBase modInstance)
+		{
+			var loadedResoniteMod = AccessTools.Field(typeof(ResoniteModBase), "loadedResoniteMod")?.GetValue(modInstance);
+			return loadedResoniteMod;
+		}
+
+		private static void SetConfigNull(ResoniteMod modInstance)
+		{
+			var loadedResoniteMod = GetLoadedResoniteMod(modInstance);
+			AccessTools.Property(loadedResoniteMod.GetType(), "ModConfiguration").SetValue(loadedResoniteMod, null);
+		}
+
+		// Updates the original mod config with the definition from new mod
+		// So new config keys from the new assembly will work
+		private static void UpdateConfigWithNewDefinition(ModConfiguration oldConfig, ModConfigurationDefinition newConfigDefinition)
+		{
+			Debug("Begin UpdateConfigWithNewDefinition.");
 
 			foreach(var oldConfigKey in oldConfig.ConfigurationItemDefinitions)
 			{
@@ -142,7 +192,7 @@ namespace ResoniteHotReloadLib
 						var oldValue = valueField.GetValue(oldConfigKey);
 						if (oldValue != null)
 						{
-							Msg("Copying not-null value to new key: " + newConfigKey.Name);
+							Debug("Copying old key value to new key: " + newConfigKey.Name);
 							valueField.SetValue(newConfigKey, oldValue);
 							AccessTools.Field(typeof(ModConfigurationKey), "HasValue").SetValue(newConfigKey, true);
 						}
@@ -151,34 +201,76 @@ namespace ResoniteHotReloadLib
 				}
 			}
 
-			Msg("Updating modInstance configuration definition...");
+			Debug("Writing configuration definition...");
 			AccessTools.Field(typeof(ModConfiguration), "Definition").SetValue(oldConfig, newConfigDefinition);
+		}
+
+		private static bool TrySetFieldValue(FieldInfo field, object instance, object value)
+		{
+			if (field != null)
+			{
+				try
+				{
+					field.SetValue(instance, value);
+					return true;
+				}
+				catch (Exception ex)
+				{
+					Error($"Could not set field {field.Name} value: " + ex.ToString());
+				}
+			}
+			else
+			{
+				Error($"Field {field.Name} is null");
+			}
+			return false;
+		}
+
+		private static bool TrySetPropertyValue(PropertyInfo property, object instance, object value)
+		{
+			if (property != null)
+			{
+				try
+				{
+					property.SetValue(instance, value);
+					return true;
+				}
+				catch (Exception ex)
+				{
+					Error($"Could not set property {property.Name} value: " + ex.ToString());
+				}
+			}
+			else
+			{
+				Error($"Property {property.Name} is null");
+			}
+			return false;
 		}
 
 		public static void HotReload(Type unloadType)
 		{
-			Msg("Begin HotReload.");
+			Msg("Begin HotReload for type: " + unloadType.FullName);
 
-			ResoniteMod modInstance = null;
+			ResoniteMod originalModInstance = null;
 
 			foreach (ResoniteMod mod in HotReloadMods)
 			{
-				if (mod.GetType().Name == unloadType.Name)
+				if (mod.GetType().FullName == unloadType.FullName)
 				{
-					modInstance = mod;
+					originalModInstance = mod;
 					break;
 				}
 			}
 
-			if (modInstance == null)
+			if (originalModInstance == null)
 			{
 				Error("Mod instance is null! Mod not setup for hot reload!");
 				return;
 			}
 
-			Msg("Mod instance info:");
-			PrintTypeInfo(modInstance.GetType());
-			Msg("Unload type info:");
+			Debug("Mod instance info:");
+			PrintTypeInfo(originalModInstance.GetType());
+			Debug("Unload type info:");
 			PrintTypeInfo(unloadType);
 
 			MethodInfo unloadMethod = AccessTools.Method(unloadType, "BeforeHotReload");
@@ -191,7 +283,7 @@ namespace ResoniteHotReloadLib
 			Msg("Calling BeforeHotReload method...");
 			unloadMethod.Invoke(null, new object[] { });
 
-			string dllPath = GetDLLPath(modInstance.GetType());
+			string dllPath = GetDLLPath(originalModInstance.GetType());
 
 			if (dllPath == null)
 			{
@@ -199,14 +291,15 @@ namespace ResoniteHotReloadLib
 				return;
 			}
 
-			Msg("Expecting to find mod DLL at path: " + dllPath);
+			Debug("Expecting to find mod DLL at path: " + dllPath);
+
 			if (!DLLFileExists(dllPath))
 			{
 				Error("DLL file does not exist in HotReloadMods directory!");
 				return;
 			}
 
-			Msg("Loading the new assembly...");
+			Debug("Loading the new assembly...");
 
 			var assemblyDefinition = AssemblyDefinition.ReadAssembly(dllPath);
 			assemblyDefinition.Name.Name += "-" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture);
@@ -216,28 +309,26 @@ namespace ResoniteHotReloadLib
 
 			Msg("Loaded assembly: " + assembly.FullName);
 
-			Msg("Re-initializing ResoniteMod...");
-			var newResoniteMod = ReinitializeMod(modInstance, dllPath, assembly);
-
-			//Type targetType = null;
-			//foreach (Type type in assembly.GetTypes())
-			//{
-				// The name of the ResoniteMod type 
-				//if (type.Name == modInstance.GetType().Name)
-				//{
-					//Msg("Found ResoniteMod type in new assembly: " + type.FullName);
-					//targetType = type;
-					//break;
-				//}
-			//}
+			Msg("Initializing and registering new ResoniteMod with RML...");
+			var newResoniteMod = InitializeAndRegisterMod(originalModInstance, dllPath, assembly);
 
 			if (newResoniteMod != null)
 			{
+				// Stop the new resonite mod from autosaving the config on shutdown (because its config is not being used currently)
+				Debug("Setting new resonite mod config to be null...");
+				SetConfigNull(newResoniteMod);
+
 				MethodInfo method = AccessTools.Method(newResoniteMod.GetType(), "OnHotReload");
 				if (method != null)
 				{
+					Msg("Updating config definition...");
+					ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
+					UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+
 					Msg("Calling OnHotReload method...");
-					method.Invoke(null, new object[] { modInstance });
+
+					// Sending the original mod instance here just to remain compatible with ResoniteModSettings
+					method.Invoke(null, new object[] { originalModInstance });
 				}
 				else
 				{
