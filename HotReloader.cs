@@ -218,6 +218,40 @@ namespace ResoniteHotReloadLib
 			return true;
 		}
 
+		private static bool TryConvertType(object obj, Type type, out object converted)
+		{
+			converted = null;
+			try
+			{
+				converted = Convert.ChangeType(obj, type);
+				return true;
+			}
+			catch
+			{
+				Debug("Initial type conversion failed.");
+				if (type.IsEnum && obj.GetType().IsEnum)
+				{
+					Debug("Trying to convert enum type...");
+					try
+					{
+						// thank you ChatGPT
+						converted = Enum.ToObject(type, Convert.ChangeType(obj, Enum.GetUnderlyingType(type)));
+						if (Enum.IsDefined(type, converted))
+						{
+							return true;
+						}
+						Debug("Converted enum value is not defined.");
+						converted = null;
+					}
+					catch
+					{
+					}
+				}
+				Error("Could not convert type.");
+				return false;
+			}
+		}
+
 		// Updates the original mod config with the definition from new mod
 		// So new config keys from the new assembly will work
 		private static void UpdateConfigWithNewDefinition(ModConfiguration oldConfig, ModConfigurationDefinition newConfigDefinition)
@@ -234,15 +268,32 @@ namespace ResoniteHotReloadLib
 						var oldValue = ModConfigurationKey_Value?.GetValue(oldConfigKey);
 						if (oldValue != null)
 						{
-							Debug("Copying config key: " + newConfigKey.Name + " Value: " + oldValue.ToString());
-							TrySetFieldValue(ModConfigurationKey_Value, newConfigKey, oldValue);
-							TrySetFieldValue(ModConfigurationKey_HasValue, newConfigKey, true);
+							Debug("Found matching config key: " + newConfigKey.Name + ", Value: " + oldValue.ToString());
+							var objectToValidate = oldValue;
+							if (oldValue.GetType() != newConfigKey.ValueType())
+							{
+								Debug("Type mismatch. Trying to convert...");
+								if (TryConvertType(oldValue, newConfigKey.ValueType(), out object converted))
+								{
+									Debug("Type conversion succeeded.");
+									objectToValidate = converted;
+								}
+							}
+							if (newConfigKey.Validate(objectToValidate))
+							{
+								Debug("Value is valid.");
+								TrySetFieldValue(ModConfigurationKey_Value, newConfigKey, objectToValidate);
+								TrySetFieldValue(ModConfigurationKey_HasValue, newConfigKey, true);
+							}
+							else
+							{
+								Debug("Value is not valid.");
+							}
 						}
 						break;
 					}
 				}
 			}
-
 			Debug("Writing configuration definition...");
 			TrySetFieldValue(ModConfiguration_Definition, oldConfig, newConfigDefinition);
 		}
