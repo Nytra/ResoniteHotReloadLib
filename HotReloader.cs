@@ -247,7 +247,6 @@ namespace ResoniteHotReloadLib
 					{
 					}
 				}
-				Error("Could not convert type.");
 				return false;
 			}
 		}
@@ -277,6 +276,10 @@ namespace ResoniteHotReloadLib
 								{
 									Debug("Type conversion succeeded.");
 									objectToValidate = converted;
+								}
+								else
+								{
+									Error("Could not convert type.");
 								}
 							}
 							if (newConfigKey.Validate(objectToValidate))
@@ -315,7 +318,7 @@ namespace ResoniteHotReloadLib
 			}
 			else
 			{
-				Error($"Field {field.Name} is null");
+				Error($"Field is null for object with type name: {instance?.GetType().Name ?? "NULL"}");
 			}
 			return false;
 		}
@@ -337,7 +340,7 @@ namespace ResoniteHotReloadLib
 			}
 			else
 			{
-				Error($"Property {property.Name} is null");
+				Error($"Property is null for object with type name: {instance?.GetType().Name ?? "NULL"}");
 			}
 			return false;
 		}
@@ -347,7 +350,6 @@ namespace ResoniteHotReloadLib
 			Msg("Begin HotReload for type: " + unloadType.FullName);
 
 			ResoniteMod originalModInstance = null;
-
 			foreach (ResoniteMod mod in HotReloadMods)
 			{
 				if (mod.GetType().FullName == unloadType.FullName)
@@ -405,16 +407,23 @@ namespace ResoniteHotReloadLib
 			Msg("Loaded assembly: " + assembly.FullName);
 
 			Msg("Initializing and registering new ResoniteMod with RML...");
-			var newResoniteMod = InitializeAndRegisterMod(originalModInstance, dllPath, assembly);
+			ResoniteMod newResoniteMod = InitializeAndRegisterMod(originalModInstance, dllPath, assembly);
 
 			if (newResoniteMod != null)
 			{
 				MethodInfo method = AccessTools.Method(newResoniteMod.GetType(), "OnHotReload");
 				if (method != null)
 				{
-					Msg("Updating config definition...");
-					ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
-					UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+					if (newResoniteMod.GetConfiguration() != null)
+					{
+						Msg("Updating config definition...");
+						ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
+						UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+					}
+					else
+					{
+						Msg("Config is null for new mod.");
+					}
 
 					// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
 					// If this fails it might not be a huge problem, but just to be safe I will stop the reload 
