@@ -8,22 +8,36 @@ This is for convenience of development and WILL result in increased memory usage
 
 It uses basically the same hot reload method as BepInEx which you can find here: https://github.com/BepInEx/BepInEx.Debug/blob/1a079418674cbbaae5d34fb2055fd77c795ee900/src/ScriptEngine/ScriptEngine.cs#L117
 
+## Known Issues
+
+Currently there is no way to create a new ModConfiguration from the newly loaded assembly. So if you try to add new config keys it won't work.
+
+If you are using ConfigurationChangedEvents make sure you are comparing the keys by name and not by object because they will not match.
+
 ## Pre-requisites
 
-You will need to implement two new methods in your mod class:
+Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
-`static void BeforeHotReload()` : Unload your mod here
+You can do this with a PostBuildEvent in Visual Studio.
+
+![Screenshot 2024-01-13 193220](https://github.com/Nytra/ResoniteHotReloadLib/assets/14206961/427f9f36-2324-450e-bb6a-044ba6071ff0)
+
+You will need to put `ResoniteHotReloadLib.dll` in `rml_mods` and `HotReloadMods` folders so the mods in there can access it.
+
+### You will also need to implement two new methods in your mod class:
+
+`static void BeforeHotReload()`
 
 and 
 
-`static void OnHotReload(ResoniteMod modInstance)` : Setup your mod here
+`static void OnHotReload(ResoniteMod modInstance)`
 
 Example:
 
 ```
 static void BeforeHotReload()
 {
-    // This is where you unload your mod and remove Harmony patches etc.
+    // This is where you unload your mod, free up memory, and remove Harmony patches etc.
 }
 
 static void OnHotReload(ResoniteMod modInstance)
@@ -37,8 +51,6 @@ static void OnHotReload(ResoniteMod modInstance)
 If these methods do not exist in your mod class then the hot reload will not work!
 
 ## Usage
-
-Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
 Add this library as a dependency in your mod, then call `HotReloader.RegisterForHotReload(ResoniteMod modInstance)` where `modInstance` is the instance of your mod class.
 
@@ -66,3 +78,5 @@ HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 ```
 
 Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
+
+There is some example mod code for hot reloading here: https://github.com/Nytra/ResoniteHotReloadLib/blob/main/ExampleMod/ExampleMod.cs
