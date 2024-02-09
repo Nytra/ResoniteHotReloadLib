@@ -10,9 +10,9 @@ It uses basically the same hot reload method as BepInEx which you can find here:
 
 ## Known Issues
 
-Currently there is no way to create a new mod configuration definition from the newly loaded assembly. So if you try to add new config keys or change existing keys it won't work.
+Adding the `[Range]` attribute to a mod configuration key then reloading will result in the configuration key not becoming a slider in ResoniteModSettings. This requires a game restart to make work.
 
-If you are using ConfigurationChangedEvents make sure you are comparing the keys by name and not by object because the objects will not match.
+Calling `Assembly.GetExecutingAssembly().Location` will return null in the reloaded mod.
 
 ## Pre-requisites
 
@@ -52,7 +52,7 @@ If these methods do not exist in your mod class then the hot reload will not wor
 
 ## Usage
 
-Add this library as a dependency in your mod, then call `HotReloader.RegisterForHotReload(ResoniteMod modInstance)` where `modInstance` is the instance of your mod class.
+Add this library as a dependency in your mod, then call `HotReloader.RegisterForHotReload(ResoniteMod modInstance)` where `modInstance` is the instance of your mod.
 
 A good place to do this is in `OnEngineInit`.
 
@@ -69,7 +69,7 @@ public override void OnEngineInit()
 }
 ```
 
-Then whenever you want to hot reload the mod you would call `HotReloader.HotReload(Type modType)` where `modType` is the type of your mod class which inherits `ResoniteMod`.
+Then whenever you want to hot reload the mod you would call `HotReloader.HotReload(Type modType)` where `modType` is the Type of your mod (the Type which inherits ResoniteMod).
 
 Example:
 
