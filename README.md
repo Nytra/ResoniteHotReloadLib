@@ -8,6 +8,8 @@ This is for convenience of development and WILL result in increased memory usage
 
 It uses basically the same hot reload method as BepInEx which you can find here: https://github.com/BepInEx/BepInEx.Debug/blob/1a079418674cbbaae5d34fb2055fd77c795ee900/src/ScriptEngine/ScriptEngine.cs#L117
 
+It does work with ResoniteModSettings however you will need to toggle the mod settings page off and on to make the keys update.
+
 ## Known Issues
 
 Adding the `[Range]` attribute to a mod configuration key then reloading will result in the configuration key not becoming a slider in ResoniteModSettings. This requires a game restart to make work.
