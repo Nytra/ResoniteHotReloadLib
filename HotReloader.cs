@@ -25,16 +25,10 @@ namespace ResoniteHotReloadLib
 		static void Warn(string str) => ResoniteMod.Warn(str);
 
 		// RML Types
-		// So when I try to get these types by name it freezes Resonite...
-		// So I will get them from objects instead
+		// When I try to get the AssemblyFile type by name it freezes Resonite...
+		// So I will get it from a object instead
 
-		static Type LoadedResoniteMod = null;
 		static Type AssemblyFile = null;
-
-		// LoadedResoniteMod
-		static PropertyInfo LoadedResoniteMod_ModAssembly; 
-		static PropertyInfo LoadedResoniteMod_ResoniteMod; 
-		static PropertyInfo LoadedResoniteMod_ModConfiguration; 
 
 		// AssemblyFile
 		static FieldInfo AssemblyFile_File; 
@@ -47,8 +41,9 @@ namespace ResoniteHotReloadLib
 		static FieldInfo ModLoader_AssemblyLookupMap = AccessTools.Field(typeof(ModLoader), "AssemblyLookupMap");
 
 		// ResoniteModBase
-		static FieldInfo ResoniteModBase_loadedResoniteMod = AccessTools.Field(typeof(ResoniteModBase), "loadedResoniteMod");
 		static PropertyInfo ResoniteModBase_FinishedLoading = AccessTools.Property(typeof(ResoniteModBase), "FinishedLoading");
+		static PropertyInfo ResoniteModBase_ModAssembly = AccessTools.Property(typeof(ResoniteModBase), "ModAssembly");
+		static PropertyInfo ResoniteModBase_ModConfiguration = AccessTools.Property(typeof(ResoniteModBase), "ModConfiguration");
 
 		// ModConfiguration
 		static FieldInfo ModConfiguration_Definition = AccessTools.Field(typeof(ModConfiguration), "Definition");
@@ -126,20 +121,8 @@ namespace ResoniteHotReloadLib
 		{
 			Debug("Begin InitializeAndRegisterMod.");
 
-			Debug("Getting original loadedResoniteMod...");
-			var origLoadedResoniteMod = GetLoadedResoniteMod(originalModInstance);
-			if (origLoadedResoniteMod == null) return null;
-
-			if (LoadedResoniteMod == null)
-			{
-				LoadedResoniteMod = origLoadedResoniteMod.GetType();
-				LoadedResoniteMod_ModAssembly = AccessTools.Property(LoadedResoniteMod, "ModAssembly");
-				LoadedResoniteMod_ResoniteMod = AccessTools.Property(LoadedResoniteMod, "ResoniteMod");
-				LoadedResoniteMod_ModConfiguration = AccessTools.Property(LoadedResoniteMod, "ModConfiguration");
-			}
-
 			Debug("Getting original AssemblyFile...");
-			var origAssemblyFile = LoadedResoniteMod_ModAssembly?.GetValue(origLoadedResoniteMod);
+			var origAssemblyFile = ResoniteModBase_ModAssembly?.GetValue(originalModInstance);
 			if (origAssemblyFile == null) return null;
 
 			if (AssemblyFile == null)
@@ -159,12 +142,8 @@ namespace ResoniteHotReloadLib
 			if (!TrySetPropertyValue(AssemblyFile_Assembly, newAssemblyFile, newAssembly)) return null;
 			if (!TrySetFieldValue(AssemblyFile_sha256, newAssemblyFile, null)) return null;
 
-			Debug("Invoking InitializeMod method...");
-			var newLoadedResoniteMod = ModLoader_InitializeMod?.Invoke(null, new object[] { newAssemblyFile });
-			if (newLoadedResoniteMod == null) return null;
-
-			Debug("Getting new ResoniteMod...");
-			var newResoniteMod = (ResoniteMod)LoadedResoniteMod_ResoniteMod?.GetValue(newLoadedResoniteMod);
+			Debug("Invoking InitializeMod method to get new ResoniteMod...");
+			var newResoniteMod = (ResoniteMod)ModLoader_InitializeMod?.Invoke(null, new object[] { newAssemblyFile });
 			if (newResoniteMod == null) return null;
 
 			// Below code emulates ModLoader.RegisterMod();
@@ -174,16 +153,13 @@ namespace ResoniteHotReloadLib
 			Debug("Updating LoadedMods...");
 			var loadedMods = (IList)ModLoader_LoadedMods?.GetValue(null);
 			if (loadedMods == null) return null;
-			loadedMods.Add(newLoadedResoniteMod);
+			loadedMods.Add(newResoniteMod);
 
 			// Makes it so when using logging the mod name will show up in the string
 			Debug("Updating AssemblyLookupMap...");
 			var assemblyLookupMap = (IDictionary)ModLoader_AssemblyLookupMap?.GetValue(null);
 			if(assemblyLookupMap == null) return null;
 			assemblyLookupMap.Add(newAssembly, newResoniteMod);
-
-			Debug("Setting loadedResoniteMod...");
-			if (!TrySetFieldValue(ResoniteModBase_loadedResoniteMod, newResoniteMod, newLoadedResoniteMod)) return null;
 
 			// Makes GetConfiguration() not throw an exception
 			Debug("Setting FinishedLoading to true...");
@@ -204,17 +180,9 @@ namespace ResoniteHotReloadLib
 			return configDefinition;
 		}
 
-		private static object GetLoadedResoniteMod(ResoniteModBase modInstance)
-		{
-			var loadedResoniteMod = ResoniteModBase_loadedResoniteMod?.GetValue(modInstance);
-			return loadedResoniteMod;
-		}
-
 		private static bool SetConfigNull(ResoniteMod modInstance)
 		{
-			var loadedResoniteMod = GetLoadedResoniteMod(modInstance);
-			if (loadedResoniteMod == null) return false;
-			if (!TrySetPropertyValue(LoadedResoniteMod_ModConfiguration, loadedResoniteMod, null)) return false;
+			if (!TrySetPropertyValue(ResoniteModBase_ModConfiguration, modInstance, null)) return false;
 			return true;
 		}
 
