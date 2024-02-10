@@ -14,7 +14,7 @@ It does work with ResoniteModSettings however you will need to toggle the mod se
 
 Adding the `[Range]` attribute to a mod configuration key then reloading will result in the configuration key not becoming a slider in ResoniteModSettings. This requires a game restart to make work.
 
-Calling `Assembly.GetExecutingAssembly().Location` will return a empty string in the reloaded mod.
+Calling `Assembly.GetExecutingAssembly().Location` will return a empty string in the reloaded mod. This is because the new assembly is loaded from a byte array instead of directly from the file.
 
 ## Pre-requisites
 
