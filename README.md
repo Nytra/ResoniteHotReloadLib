@@ -43,13 +43,18 @@ Example:
 ```
 static void BeforeHotReload()
 {
+    // This runs in the current assembly (i.e. the assembly which invokes the Hot Reload)
+
     // This is where you unload your mod, free up memory, and remove Harmony patches etc.
 }
 
 static void OnHotReload(ResoniteMod modInstance)
 {
+    // This runs in the new assembly (i.e. the one which was loaded fresh for the Hot Reload)
+
     // Get the config
     config = modInstance.GetConfiguration();
+
     // Now you can setup your mod again
 }
 ```
