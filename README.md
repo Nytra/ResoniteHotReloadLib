@@ -2,7 +2,7 @@
 
 ## Use at your own risk
 
-Library for Resonite mod developers to hot reload their mods.
+Library for Resonite mod developers to hot reload their mods without needing to restart the whole game.
 
 This is for convenience of development and WILL result in increased memory usage and possibly other issues which are unknown at this time.
 
