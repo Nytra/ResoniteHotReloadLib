@@ -18,6 +18,8 @@ Calling `Assembly.GetExecutingAssembly().Location` will return a empty string in
 
 ## Pre-requisites
 
+Install ResoniteModLoader: https://github.com/resonite-modding-group/ResoniteModLoader
+
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
 You can do this with a PostBuildEvent in Visual Studio.
