@@ -12,6 +12,8 @@ It does work with ResoniteModSettings however you will need to toggle the mod se
 
 ## Known Issues
 
+Defining very small anonymous delegates inside patches can break hot-reloading, because (I assume) the JIT compiler 'optimizes' them during runtime. This prevents Harmony from being able to remove the patch.
+
 Adding the `[Range]` attribute to a mod configuration key then reloading will result in the configuration key not becoming a slider in ResoniteModSettings. This requires a game restart to make work.
 
 Calling `Assembly.GetExecutingAssembly().Location` will return a empty string in the reloaded mod. This is because the new assembly is loaded from a byte array instead of directly from the file.
