@@ -468,15 +468,6 @@ namespace ResoniteHotReloadLib
 							Msg("Updating config definition...");
 							ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
 							UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
-
-							// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
-							// If this fails it might not be a huge problem, but just to be safe I will stop the reload
-							Debug("Setting new resonite mod config to be null...");
-							if (!SetConfig(newResoniteMod, null))
-							{
-								Error("Could not set config to be null!");
-								return;
-							}
 						}
 						else
 						{
@@ -486,6 +477,15 @@ namespace ResoniteHotReloadLib
 								Error("Could not set config!");
 								return;
 							}
+						}
+
+						// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
+						// If this fails it might not be a huge problem, but just to be safe I will stop the reload
+						Debug("Setting new resonite mod config to be null...");
+						if (!SetConfig(newResoniteMod, null))
+						{
+							Error("Could not set config to be null!");
+							return;
 						}
 					}
 					else
