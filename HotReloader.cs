@@ -8,6 +8,7 @@ using HarmonyLib;
 using Mono.Cecil;
 using System.Globalization;
 using System.Collections;
+using FrooxEngine;
 
 namespace ResoniteHotReloadLib
 {
@@ -18,6 +19,8 @@ namespace ResoniteHotReloadLib
 		// since the library right now is used by just one mod at a time and not multiple
 		// but since I might try to integrate this into RML in the future it would be better to keep this as a list
 		static readonly List<ResoniteMod> HotReloadMods = new List<ResoniteMod>();
+		static readonly Dictionary<ResoniteMod, int> timesHotReloaded = new Dictionary<ResoniteMod, int>();
+		const string HOT_RELOAD_OPTIONS_PATH = "Hot Reload Mods";
 
 		static void Msg(string str) => ResoniteMod.Msg(str);
 		static void Error(string str) => ResoniteMod.Error(str);
@@ -105,6 +108,8 @@ namespace ResoniteHotReloadLib
 			if (!HotReloadMods.Contains(mod))
 			{
 				HotReloadMods.Add(mod);
+				timesHotReloaded.Add(mod, 0);
+				AddReloadMenuOption(mod);
 				Msg("Mod registered for hot reload.");
 			}
 			else
@@ -180,9 +185,9 @@ namespace ResoniteHotReloadLib
 			return configDefinition;
 		}
 
-		private static bool SetConfigNull(ResoniteMod modInstance)
+		private static bool SetConfig(ResoniteMod modInstance, object newConfig)
 		{
-			if (!TrySetPropertyValue(ResoniteModBase_ModConfiguration, modInstance, null)) return false;
+			if (!TrySetPropertyValue(ResoniteModBase_ModConfiguration, modInstance, newConfig)) return false;
 			return true;
 		}
 
@@ -197,7 +202,7 @@ namespace ResoniteHotReloadLib
 			catch
 			{
 				Debug("Initial type conversion failed.");
-				if (type.IsEnum && obj.GetType().IsEnum)
+				if (type.IsEnum && obj.GetType().IsEnum && Enum.GetUnderlyingType(type) == Enum.GetUnderlyingType(obj.GetType()))
 				{
 					Debug("Trying to convert enum type...");
 					try
@@ -219,8 +224,9 @@ namespace ResoniteHotReloadLib
 			}
 		}
 
-		// Updates the original mod config with the definition from new mod
+		// Updates the original mod config with the definition from new mod and copies existing values over
 		// So new config keys from the new assembly will work
+		// And values from the old config will still be accessible
 		private static void UpdateConfigWithNewDefinition(ModConfiguration oldConfig, ModConfigurationDefinition newConfigDefinition)
 		{
 			Debug("Begin UpdateConfigWithNewDefinition.");
@@ -233,7 +239,8 @@ namespace ResoniteHotReloadLib
 					if (newConfigKey.Name == oldConfigKey.Name && newConfigKey.ValueType().FullName == oldConfigKey.ValueType().FullName)
 					{
 						var oldValue = ModConfigurationKey_Value?.GetValue(oldConfigKey);
-						if (oldValue != null)
+						var oldKeyHasValue = ModConfigurationKey_HasValue?.GetValue(oldConfigKey);
+						if ((bool)oldKeyHasValue == true)
 						{
 							Debug("Found matching config key: " + newConfigKey.Name + ", Value: " + oldValue.ToString());
 							var objectToValidate = oldValue;
@@ -313,8 +320,77 @@ namespace ResoniteHotReloadLib
 			return false;
 		}
 
+		public static int GetReloadedCountOfModType(Type modType)
+		{
+			return timesHotReloaded.FirstOrDefault(kVP => kVP.Key.GetType().FullName == modType.FullName).Value;
+		}
+
+		private static string GetReloadString(ResoniteMod mod)
+		{
+			int count = GetReloadedCountOfModType(mod.GetType());
+			return $"({count}) Reload {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}";
+		}
+
+		private static void AddReloadMenuOption(ResoniteMod mod)
+		{
+			Debug("Begin AddReloadMenuOption");
+			if (!Engine.Current.IsInitialized)
+			{
+				Engine.Current.RunPostInit(AddActionDelegate);
+			}
+			else
+			{
+				AddActionDelegate();
+			}
+			void AddActionDelegate()
+			{
+				string reloadString = GetReloadString(mod);
+				DevCreateNewForm.AddAction(HOT_RELOAD_OPTIONS_PATH, reloadString, (x) =>
+				{
+					x.Destroy();
+
+					Msg($"Hot reload button pressed for mod {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}.");
+
+					HotReload(mod.GetType());
+				});
+				Debug($"Added reload menu option: {reloadString}");
+			}
+		}
+
+		public static bool RemoveMenuOption(string path, string optionName)
+		{
+			Debug("Begin RemoveMenuOption");
+			Debug($"Path: {path} optionName: {optionName}");
+			object categoryNode = AccessTools.Field(typeof(DevCreateNewForm), "root").GetValue(null);
+			object subcategory = AccessTools.Method(categoryNode.GetType(), "GetSubcategory").Invoke(categoryNode, new object[] { path });
+			System.Collections.IList elements = (System.Collections.IList)AccessTools.Field(categoryNode.GetType(), "_elements").GetValue(subcategory);
+			if (elements == null)
+			{
+				Debug("Elements is null!");
+				return false;
+			}
+			foreach (object categoryItem in elements)
+			{
+				var name = (string)AccessTools.Field(categoryNode.GetType().GetGenericArguments()[0], "name").GetValue(categoryItem);
+				//var action = (Action<Slot>)AccessTools.Field(categoryItemType, "action").GetValue(categoryItem);
+				if (name == optionName)
+				{
+					elements.Remove(categoryItem);
+					Debug("Menu option removed.");
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public static void HotReload(Type unloadType)
 		{
+			if (!typeof(ResoniteMod).IsAssignableFrom(unloadType))
+			{
+				Error("Unload type is not assignable from ResoniteMod!");
+				return;
+			}
+
 			Msg("Begin HotReload for type: " + unloadType.FullName);
 
 			ResoniteMod originalModInstance = null;
@@ -344,6 +420,9 @@ namespace ResoniteHotReloadLib
 				Error("Unload type does not have a BeforeHotReload method!");
 				return;
 			}
+
+			Msg("Removing hot reload menu option...");
+			RemoveMenuOption(HOT_RELOAD_OPTIONS_PATH, GetReloadString(originalModInstance));
 
 			Msg("Calling BeforeHotReload method...");
 			unloadMethod.Invoke(null, new object[] { });
@@ -384,23 +463,48 @@ namespace ResoniteHotReloadLib
 				{
 					if (newResoniteMod.GetConfiguration() != null)
 					{
-						Msg("Updating config definition...");
-						ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
-						UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+						if (originalModInstance.GetConfiguration() != null)
+						{
+							Msg("Updating config definition...");
+							ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
+							UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+
+							// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
+							// If this fails it might not be a huge problem, but just to be safe I will stop the reload
+							Debug("Setting new resonite mod config to be null...");
+							if (!SetConfig(newResoniteMod, null))
+							{
+								Error("Could not set config to be null!");
+								return;
+							}
+						}
+						else
+						{
+							Warn("Original mod config is null! Replacing it with new config...");
+							if (!SetConfig(originalModInstance, newResoniteMod.GetConfiguration()))
+							{
+								Error("Could not set config!");
+								return;
+							}
+						}
 					}
 					else
 					{
 						Msg("Config is null for new mod.");
 					}
 
-					// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
-					// If this fails it might not be a huge problem, but just to be safe I will stop the reload 
-					Debug("Setting new resonite mod config to be null...");
-					if (!SetConfigNull(newResoniteMod))
+					if (timesHotReloaded.ContainsKey(originalModInstance))
 					{
-						Error("Could not set config to be null!");
+						timesHotReloaded[originalModInstance]++;
+					}
+					else
+					{
+						Error("timesHotReloaded did not contain original mod instance!");
 						return;
 					}
+
+					Msg("Adding hot reload menu option...");
+					AddReloadMenuOption(newResoniteMod);
 
 					Msg("Calling OnHotReload method...");
 
