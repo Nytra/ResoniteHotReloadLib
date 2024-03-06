@@ -32,7 +32,7 @@ The reason for compiling into a separate folder is that you currently cannot ove
 
 You will need to put `ResoniteHotReloadLib.dll` in `rml_mods` and `HotReloadMods` folders so the mods in there can access it.
 
-### You will also need to implement two new methods in your mod class:
+### You will also need to implement two new methods in your mod class which will be your constructor and destructor for reloading:
 
 `static void BeforeHotReload()`
 
@@ -82,7 +82,9 @@ public override void OnEngineInit()
 }
 ```
 
-Then whenever you want to hot reload the mod you would call `HotReloader.HotReload(Type modType)` where `modType` is the Type of your mod (the Type which inherits ResoniteMod).
+Then whenever you want to hot reload the mod you would equip a Dev Tool in-game and open the Create New menu and select "Hot Reload Mods" option then click the button for your mod.
+
+Optionally you can call `HotReloader.HotReload(Type modType)` directly, where `modType` is the Type of your mod (the Type which inherits ResoniteMod).
 
 Example:
 
