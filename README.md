@@ -101,3 +101,20 @@ HotReloader.HotReload(typeof(YourResoniteModTypeHere));
 Note: The HotReloader will call `BeforeHotReload` on the type that you provide here, so make sure it is the correct type!
 
 There is some example mod code for hot reloading here: https://github.com/Nytra/ResoniteHotReloadLib/blob/main/ExampleMod/ExampleMod.cs
+
+## Public API
+
+These are the public API methods that can be used:
+
+- `public static void RegisterForHotReload(ResoniteMod mod)`
+    - Registers the mod for hot reload. It will add it to the internal memory of the library and create a reload button for it in the DevCreateNewForm.
+
+- `public static int GetReloadedCountOfModType(Type modType)`
+    - Will find a registered mod with the same full type name as this Type and return the number of times it has been reloaded since Resonite has been running.
+ 
+- `public static bool RemoveMenuOption(string path, string optionName)`
+    - Will find a menu option in the DevCreateNewForm matching this path and optionName and remove it.
+    - For example `RemoveMenuOption("Editor", "My Custom Menu Option")` will remove a option called "My Custom Menu Option" in the "Editor" category. This can be useful in your `BeforeHotReload` destructor for removing any additional menu options that you may have added manually.
+ 
+- `public static void HotReload(Type unloadType)`
+    - Will trigger a hot reload for the mod which matches the full type name of the unloadType. The ResoniteMod type needs to be assignable from the unloadType. The original mod must have already been registered with the library and it needs to have the `OnHotReload` and `BeforeHotReload` constructor and destructor methods.
