@@ -69,17 +69,18 @@ namespace HotReloadExampleMod
 			}
 		}
 
-		[HarmonyPatch(typeof(Userspace), "OnCommonUpdate")]
-		class HotReloadTriggerReloadPatch
-		{
-			public static void Postfix()
-			{
+		// This kind of patch is not needed anymore since v2.1.0, but you can optionally use it if you really want to
+		// [HarmonyPatch(typeof(Userspace), "OnCommonUpdate")]
+		// class HotReloadTriggerReloadPatch
+		// {
+			// public static void Postfix()
+			// {
 				// Reload the mod when pressing the F3 key (Just for example)
-				if (Engine.Current.InputInterface.GetKeyDown(Key.F3))
-				{
-					HotReloader.HotReload(typeof(HotReloadExampleMod));
-				}
-			}
-		}
+				// if (Engine.Current.InputInterface.GetKeyDown(Key.F3))
+				// {
+					// HotReloader.HotReload(typeof(HotReloadExampleMod));
+				// }
+			// }
+		// }
 	}
 }
