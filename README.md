@@ -84,6 +84,12 @@ public override void OnEngineInit()
 
 Then whenever you want to hot reload the mod you would equip a Dev Tool in-game and open the Create New menu and select "Hot Reload Mods" option then click the button for your mod.
 
+![2024-03-06 02 25 52](https://github.com/Nytra/ResoniteHotReloadLib/assets/14206961/03094209-583a-45e1-9e6c-6037769a1618)
+
+The number in brackets beside the mod name is the number of times the mod has been reloaded during the time Resonite has been running.
+
+![2024-03-06 02 26 06](https://github.com/Nytra/ResoniteHotReloadLib/assets/14206961/a942154e-a37d-4ec9-b914-66d66900c587)
+
 Optionally you can call `HotReloader.HotReload(Type modType)` directly, where `modType` is the Type of your mod (the Type which inherits ResoniteMod).
 
 Example:
