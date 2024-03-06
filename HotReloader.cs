@@ -1,14 +1,14 @@
-﻿using System;
+﻿using FrooxEngine;
+using HarmonyLib;
+using Mono.Cecil;
+using ResoniteModLoader;
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using ResoniteModLoader;
-using HarmonyLib;
-using Mono.Cecil;
-using System.Globalization;
-using System.Collections;
-using FrooxEngine;
 
 namespace ResoniteHotReloadLib
 {
@@ -34,8 +34,8 @@ namespace ResoniteHotReloadLib
 		static Type AssemblyFile = null;
 
 		// AssemblyFile
-		static FieldInfo AssemblyFile_File; 
-		static PropertyInfo AssemblyFile_Assembly; 
+		static FieldInfo AssemblyFile_File;
+		static PropertyInfo AssemblyFile_Assembly;
 		static FieldInfo AssemblyFile_sha256;
 
 		// ModLoader
@@ -50,7 +50,7 @@ namespace ResoniteHotReloadLib
 
 		// ModConfiguration
 		static FieldInfo ModConfiguration_Definition = AccessTools.Field(typeof(ModConfiguration), "Definition");
-		
+
 		// ModConfigurationKey
 		static FieldInfo ModConfigurationKey_Value = AccessTools.Field(typeof(ModConfigurationKey), "Value");
 		static FieldInfo ModConfigurationKey_HasValue = AccessTools.Field(typeof(ModConfigurationKey), "HasValue");
@@ -163,7 +163,7 @@ namespace ResoniteHotReloadLib
 			// Makes it so when using logging the mod name will show up in the string
 			Debug("Updating AssemblyLookupMap...");
 			var assemblyLookupMap = (IDictionary)ModLoader_AssemblyLookupMap?.GetValue(null);
-			if(assemblyLookupMap == null) return null;
+			if (assemblyLookupMap == null) return null;
 			assemblyLookupMap.Add(newAssembly, newResoniteMod);
 
 			// Makes GetConfiguration() not throw an exception
@@ -231,10 +231,10 @@ namespace ResoniteHotReloadLib
 		{
 			Debug("Begin UpdateConfigWithNewDefinition.");
 
-			foreach(var oldConfigKey in oldConfig.ConfigurationItemDefinitions)
+			foreach (var oldConfigKey in oldConfig.ConfigurationItemDefinitions)
 			{
 				// copy values from old to new
-				foreach(var newConfigKey in newConfigDefinition.ConfigurationItemDefinitions)
+				foreach (var newConfigKey in newConfigDefinition.ConfigurationItemDefinitions)
 				{
 					if (newConfigKey.Name == oldConfigKey.Name && newConfigKey.ValueType().FullName == oldConfigKey.ValueType().FullName)
 					{
