@@ -30,7 +30,7 @@ You can do this with a PostBuildEvent in Visual Studio.
 
 The reason for compiling into a separate folder is that you currently cannot overwrite the file in `rml_mods` while the game is running. So the file in `rml_mods` is used when the game first starts up and then after that the mod will be reloaded from the `HotReloadMods` directory.
 
-You will need to put `ResoniteHotReloadLib.dll` in `rml_mods` and `HotReloadMods` folders so the mods in there can access it.
+You will need to put `ResoniteHotReloadLib.dll` in `rml_libs` so that the mods can access it.
 
 ### You will also need to implement two new methods in your mod class which will be your constructor and destructor for reloading:
 
