@@ -44,7 +44,7 @@
       <HintPath>$(ResonitePath)rml_libs\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="FrooxEngine">
-      <HintPath>G:\SteamLibrary\steamapps\common\Resonite\Resonite_Data\Managed\FrooxEngine.dll</HintPath>
+      <HintPath>$(ResonitePath)Resonite_Data\Managed\FrooxEngine.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteModLoader">
       <HintPath>$(ResonitePath)Libraries\ResoniteModLoader.dll</HintPath>
@@ -64,7 +64,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /y "$(TargetDir)\$(TargetFileName)" $(ResonitePath)rml_mods\HotReloadMods
-copy /y "$(TargetDir)\$(TargetFileName)" $(ResonitePath)rml_mods</PostBuildEvent>
+    <PostBuildEvent>copy /y "$(TargetDir)\$(TargetFileName)" $(ResonitePath)rml_libs</PostBuildEvent>
   </PropertyGroup>
 </Project>

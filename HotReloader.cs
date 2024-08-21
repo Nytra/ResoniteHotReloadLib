@@ -55,6 +55,16 @@ namespace ResoniteHotReloadLib
 		static FieldInfo ModConfigurationKey_Value = AccessTools.Field(typeof(ModConfigurationKey), "Value");
 		static FieldInfo ModConfigurationKey_HasValue = AccessTools.Field(typeof(ModConfigurationKey), "HasValue");
 
+		// Mono.Cecil.AssemblyDefinition
+		static Type AssemblyDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyDefinition");
+		static PropertyInfo AssemblyDefinition_Name = AccessTools.Property(AssemblyDefinition, "Name");
+		static MethodInfo AssemblyDefinition_ReadAssembly = AccessTools.Method(AssemblyDefinition, "ReadAssembly", new Type[] { typeof(string) });
+		static MethodInfo AssemblyDefinition_Write = AccessTools.Method(AssemblyDefinition, "Write", new Type[] { typeof(System.IO.Stream) });
+
+		// Mono.Cecil.AssemblyNameDefinition
+		static Type AssemblyNameDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyNameDefinition");
+		static PropertyInfo AssemblyNameDefinition_Name = AccessTools.Property(AssemblyNameDefinition, "Name");
+
 		private static void PrintTypeInfo(Type t)
 		{
 			Debug("Type Assembly FullName: " + t.Assembly.FullName);
@@ -445,10 +455,12 @@ namespace ResoniteHotReloadLib
 
 			Debug("Loading the new assembly...");
 
-			var assemblyDefinition = AssemblyDefinition.ReadAssembly(dllPath);
-			assemblyDefinition.Name.Name += "-" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture);
+			var assemblyDefinition = AssemblyDefinition_ReadAssembly.Invoke(null, new object[] { dllPath });
+			var assemblyNameDefinition = AssemblyDefinition_Name.GetValue(assemblyDefinition);
+			var assemblyNameDefinitionName = AssemblyNameDefinition_Name.GetValue(assemblyNameDefinition);
+			AssemblyNameDefinition_Name.SetValue(assemblyNameDefinition, (string)assemblyNameDefinitionName + "-" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
 			var memoryStream = new MemoryStream();
-			assemblyDefinition.Write(memoryStream);
+			AssemblyDefinition_Write.Invoke(assemblyDefinition, new object[] { memoryStream });
 			Assembly assembly = Assembly.Load(memoryStream.ToArray());
 
 			Msg("Loaded assembly: " + assembly.FullName);
