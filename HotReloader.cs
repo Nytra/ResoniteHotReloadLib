@@ -1,23 +1,100 @@
 ﻿using FrooxEngine;
 using HarmonyLib;
+using MonkeyLoader.Meta;
+using MonkeyLoader.NuGet;
 using Mono.Cecil;
+using NuGet.Frameworks;
+using NuGet.Packaging.Core;
+using NuGet.Versioning;
 using ResoniteModLoader;
 using System;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Zio;
+using Zio.FileSystems;
 
 namespace ResoniteHotReloadLib
 {
+	//internal sealed class HotReloadMod : Mod
+	//{
+	//	private static readonly Type _resoniteModType = typeof(ResoniteMod);
+	//	private static readonly Uri _rmlIconUrl = new("https://avatars.githubusercontent.com/u/145755526");
+
+	//	///<inheritdoc/>
+	//	public override string Description => "Hot Reloaded RML Mod";
+
+	//	/// <summary>
+	//	/// Map of Assembly to ResoniteMod, used for logging purposes
+	//	/// </summary>
+	//	//internal static readonly Dictionary<Assembly, ResoniteMod> AssemblyLookupMap = new();
+
+	//	///<inheritdoc/>
+	//	public override IFileSystem FileSystem { get; }
+
+	//	///<inheritdoc/>
+	//	public override UPath? IconPath => null;
+
+	//	///<inheritdoc/>
+	//	public override Uri? IconUrl => _rmlIconUrl;
+
+	//	///<inheritdoc/>
+	//	public override PackageIdentity Identity { get; }
+
+	//	///<inheritdoc/>
+	//	public override Uri? ProjectUrl { get; }
+
+	//	///<inheritdoc/>
+	//	public override string? ReleaseNotes => null;
+
+	//	///<inheritdoc/>
+	//	public override bool SupportsHotReload => true;
+
+	//	///<inheritdoc/>
+	//	public override NuGetFramework TargetFramework => NuGetHelper.Framework;
+
+	//	///<inheritdoc/>
+	//	public HotReloadMod(MonkeyLoader.MonkeyLoader loader, string? location, bool isGamePack)
+	//		: base(loader, location, isGamePack)
+	//	{
+	//		FileSystem = new MemoryFileSystem() { Name = $"Dummy FileSystem for {Path.GetFileNameWithoutExtension(location)}" };
+
+	//		//var assembly = Assembly.LoadFile(location);
+	//		var modType = assembly.GetTypes().Single(_resoniteModType.IsAssignableFrom);
+	//		var resoniteMod = (ResoniteMod)Activator.CreateInstance(modType);
+
+	//		//AssemblyLookupMap.Add(assembly, resoniteMod);
+
+	//		NuGetVersion version;
+	//		if (!NuGetVersion.TryParse(resoniteMod.Version, out version!))
+	//			version = new(1, 0, 0);
+
+	//		Identity = new PackageIdentity(resoniteMod.GetType().Assembly.GetName().Name, version);
+
+	//		resoniteMod.Mod = this;
+
+	//		if (Uri.TryCreate(resoniteMod.Link, UriKind.Absolute, out var projectUrl))
+	//			ProjectUrl = projectUrl;
+
+	//		authors.Add(resoniteMod.Author);
+	//		monkeys.Add((IMonkey)resoniteMod);
+
+	//		// Add dependencies after refactoring MKL
+	//		//foreach (var referencedAssembly in assembly.GetReferencedAssemblies())
+	//		//    dependencies.Add(referencedAssembly.Name, new DependencyReference())
+	//	}
+
+	//	protected override bool OnLoadEarlyMonkeys() => true;
+
+	//	protected override bool OnLoadMonkeys() => true;
+	//}
 	public static class HotReloader
 	{
 		// list of mods setup for hot reloading
-		// this probably doesn't need to be a list and could just be a reference to a single ResoniteMod
-		// since the library right now is used by just one mod at a time and not multiple
-		// but since I might try to integrate this into RML in the future it would be better to keep this as a list
 		static readonly List<ResoniteMod> HotReloadMods = new List<ResoniteMod>();
 		static readonly Dictionary<ResoniteMod, int> timesHotReloaded = new Dictionary<ResoniteMod, int>();
 		const string HOT_RELOAD_OPTIONS_PATH = "Hot Reload Mods";
@@ -34,26 +111,13 @@ namespace ResoniteHotReloadLib
 		static Type AssemblyFile = null;
 
 		// AssemblyFile
-		static FieldInfo AssemblyFile_File;
-		static PropertyInfo AssemblyFile_Assembly;
-		static FieldInfo AssemblyFile_sha256;
-
-		// ModLoader
-		static MethodInfo ModLoader_InitializeMod = AccessTools.Method(typeof(ModLoader), "InitializeMod");
-		static FieldInfo ModLoader_LoadedMods = AccessTools.Field(typeof(ModLoader), "LoadedMods");
-		static FieldInfo ModLoader_AssemblyLookupMap = AccessTools.Field(typeof(ModLoader), "AssemblyLookupMap");
+		static FieldInfo AssemblyFile_File = null;
 
 		// ResoniteModBase
-		static PropertyInfo ResoniteModBase_FinishedLoading = AccessTools.Property(typeof(ResoniteModBase), "FinishedLoading");
-		static PropertyInfo ResoniteModBase_ModAssembly = AccessTools.Property(typeof(ResoniteModBase), "ModAssembly");
 		static PropertyInfo ResoniteModBase_ModConfiguration = AccessTools.Property(typeof(ResoniteModBase), "ModConfiguration");
 
 		// ModConfiguration
 		static FieldInfo ModConfiguration_Definition = AccessTools.Field(typeof(ModConfiguration), "Definition");
-
-		// ModConfigurationKey
-		static FieldInfo ModConfigurationKey_Value = AccessTools.Field(typeof(ModConfigurationKey), "Value");
-		static FieldInfo ModConfigurationKey_HasValue = AccessTools.Field(typeof(ModConfigurationKey), "HasValue");
 
 		// Mono.Cecil.AssemblyDefinition
 		static Type AssemblyDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyDefinition");
@@ -64,6 +128,15 @@ namespace ResoniteHotReloadLib
 		// Mono.Cecil.AssemblyNameDefinition
 		static Type AssemblyNameDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyNameDefinition");
 		static PropertyInfo AssemblyNameDefinition_Name = AccessTools.Property(AssemblyNameDefinition, "Name");
+
+		// MonkeyLoader RML
+		static Type RmlMod = typeof(ModLoader).Assembly.GetTypes().FirstOrDefault(type => type.Name == "RmlMod");
+		static FieldInfo RmlMod_AssemblyLookupMap = AccessTools.Field(RmlMod, "AssemblyLookupMap");
+
+		private static bool IsMonkeyLoaderModType(Type t)
+		{
+			return t.GetInterfaces().Any(type => type.Name == "IMonkey");
+		}
 
 		private static void PrintTypeInfo(Type t)
 		{
@@ -128,7 +201,7 @@ namespace ResoniteHotReloadLib
 			}
 		}
 
-		// Uses a lot of reflection to initialize the mod via RML and then register it
+		// initialize the mod via RML and then register it
 		// This needs to create a new instance of AssemblyFile, give it the new values and then pass it to InitializeMod
 		// Then it also registers the mod with RML so that the new mod will show up in ModLoader.Mods()
 		// This also makes it so when the new mod uses logging it will show the name of the mod in the log string
@@ -136,29 +209,26 @@ namespace ResoniteHotReloadLib
 		{
 			Debug("Begin InitializeAndRegisterMod.");
 
-			Debug("Getting original AssemblyFile...");
-			var origAssemblyFile = ResoniteModBase_ModAssembly?.GetValue(originalModInstance);
-			if (origAssemblyFile == null) return null;
+			var origAssemblyFile = originalModInstance.ModAssembly;
 
+			// Cache the assemblyfile type
 			if (AssemblyFile == null)
 			{
 				AssemblyFile = origAssemblyFile.GetType();
 				AssemblyFile_File = AccessTools.Field(AssemblyFile, "<File>k__BackingField");
-				AssemblyFile_Assembly = AccessTools.Property(AssemblyFile, "Assembly");
-				AssemblyFile_sha256 = AccessTools.Field(AssemblyFile, "sha256");
 			}
 
 			Debug("Creating new AssemblyFile instance...");
-			var newAssemblyFile = AccessTools.CreateInstance(AssemblyFile);
+			var newAssemblyFile = (AssemblyFile)AccessTools.CreateInstance(AssemblyFile);
 			if (newAssemblyFile == null) return null;
 
 			Debug("Setting AssemblyFile values...");
 			if (!TrySetFieldValue(AssemblyFile_File, newAssemblyFile, newDllPath)) return null;
-			if (!TrySetPropertyValue(AssemblyFile_Assembly, newAssemblyFile, newAssembly)) return null;
-			if (!TrySetFieldValue(AssemblyFile_sha256, newAssemblyFile, null)) return null;
+			newAssemblyFile.Assembly = newAssembly;
+			newAssemblyFile.sha256 = null;
 
 			Debug("Invoking InitializeMod method to get new ResoniteMod...");
-			var newResoniteMod = (ResoniteMod)ModLoader_InitializeMod?.Invoke(null, new object[] { newAssemblyFile });
+			var newResoniteMod = ModLoader.InitializeMod(newAssemblyFile);
 			if (newResoniteMod == null) return null;
 
 			// Below code emulates ModLoader.RegisterMod();
@@ -166,19 +236,57 @@ namespace ResoniteHotReloadLib
 
 			// Makes the new mod show up in ModLoader.Mods
 			Debug("Updating LoadedMods...");
-			var loadedMods = (IList)ModLoader_LoadedMods?.GetValue(null);
-			if (loadedMods == null) return null;
-			loadedMods.Add(newResoniteMod);
+			ModLoader.LoadedMods.Add(newResoniteMod);
 
 			// Makes it so when using logging the mod name will show up in the string
 			Debug("Updating AssemblyLookupMap...");
-			var assemblyLookupMap = (IDictionary)ModLoader_AssemblyLookupMap?.GetValue(null);
-			if (assemblyLookupMap == null) return null;
-			assemblyLookupMap.Add(newAssembly, newResoniteMod);
+			ModLoader.AssemblyLookupMap.Add(newAssembly, newResoniteMod);
 
 			// Makes GetConfiguration() not throw an exception
 			Debug("Setting FinishedLoading to true...");
-			if (!TrySetPropertyValue(ResoniteModBase_FinishedLoading, newResoniteMod, true)) return null;
+			newResoniteMod.FinishedLoading = true;
+
+			return newResoniteMod;
+		}
+
+		private static ResoniteMod InitializeAndRegisterMod_MonkeyLoaderRML(ResoniteMod originalModInstance, string newDllPath, Assembly newAssembly)
+		{
+			Debug("Begin InitializeAndRegisterMod_MonkeyLoaderRML.");
+
+			var modProp = AccessTools.Property(typeof(ResoniteModBase), "Mod");
+			var mod = (Mod)modProp.GetValue(originalModInstance);
+
+			Type newModType = newAssembly.GetTypes().Single(typeof(ResoniteMod).IsAssignableFrom);
+
+			var newResoniteMod = (ResoniteMod)Activator.CreateInstance(newModType);
+
+			modProp.SetValue(newResoniteMod, mod);
+
+			originalModInstance.GetConfiguration(); // initialize lazy config
+
+			var section = mod.Config._sections.FirstOrDefault(s => s.Id == "values");
+			if (section != null)
+			{
+				foreach (var key in section.keys)
+				{
+					mod.Config._configurationItemDefinitionsSelfMap.Remove(key.AsUntyped);
+				}
+
+				mod.Config._sections.Remove(section);
+			}
+
+			var assemblyLookupMap = (IDictionary)RmlMod_AssemblyLookupMap.GetValue(null);
+			if (assemblyLookupMap != null)
+			{
+				assemblyLookupMap.Add(newAssembly, newResoniteMod);
+			}
+
+			//var conf2 = newResoniteMod.GetConfiguration(); // initialize lazy config
+			//var section2 = mod.Config._sections.First(s => s.Id == "values");
+			//foreach (var thingy2 in section2.keys)
+			//{
+			//	Engine.Current.WorldManager.FocusedWorld.GetCoreLocale().Asset.Data
+			//}
 
 			return newResoniteMod;
 		}
@@ -188,12 +296,6 @@ namespace ResoniteHotReloadLib
 		//	var newConfigDefinition = (ModConfigurationDefinition)AccessTools.Method(typeof(ResoniteMod), "BuildConfigurationDefinition")?.Invoke(modInstance, new object[] { });
 		//	return newConfigDefinition;
 		//}
-
-		private static ModConfigurationDefinition GetConfigDefinition(ModConfiguration modConfig)
-		{
-			var configDefinition = (ModConfigurationDefinition)ModConfiguration_Definition?.GetValue(modConfig);
-			return configDefinition;
-		}
 
 		private static bool SetConfig(ResoniteMod modInstance, object newConfig)
 		{
@@ -248,9 +350,8 @@ namespace ResoniteHotReloadLib
 				{
 					if (newConfigKey.Name == oldConfigKey.Name && newConfigKey.ValueType().FullName == oldConfigKey.ValueType().FullName)
 					{
-						var oldValue = ModConfigurationKey_Value?.GetValue(oldConfigKey);
-						var oldKeyHasValue = ModConfigurationKey_HasValue?.GetValue(oldConfigKey);
-						if ((bool)oldKeyHasValue == true)
+						var oldValue = oldConfigKey.Value;
+						if (oldConfigKey.HasValue)
 						{
 							Debug("Found matching config key: " + newConfigKey.Name + ", Value: " + oldValue.ToString());
 							var objectToValidate = oldValue;
@@ -270,8 +371,8 @@ namespace ResoniteHotReloadLib
 							if (newConfigKey.Validate(objectToValidate))
 							{
 								Debug("Value is valid.");
-								TrySetFieldValue(ModConfigurationKey_Value, newConfigKey, objectToValidate);
-								TrySetFieldValue(ModConfigurationKey_HasValue, newConfigKey, true);
+								newConfigKey.Value = objectToValidate;
+								newConfigKey.HasValue = true;
 							}
 							else
 							{
@@ -283,7 +384,7 @@ namespace ResoniteHotReloadLib
 				}
 			}
 			Debug("Writing configuration definition...");
-			TrySetFieldValue(ModConfiguration_Definition, oldConfig, newConfigDefinition);
+			TrySetFieldValue(ModConfiguration_Definition, oldConfig, newConfigDefinition); // set readonly field with reflection
 		}
 
 		// Returns true if success, false if fail
@@ -431,11 +532,12 @@ namespace ResoniteHotReloadLib
 				return;
 			}
 
-			Msg("Removing hot reload menu option...");
-			RemoveMenuOption(HOT_RELOAD_OPTIONS_PATH, GetReloadString(originalModInstance));
-
-			Msg("Calling BeforeHotReload method...");
-			unloadMethod.Invoke(null, new object[] { });
+			MethodInfo reloadMethod = AccessTools.Method(unloadType, "OnHotReload");
+			if (reloadMethod == null)
+			{
+				Error("Unload type does not have a OnHotReload method!");
+				return;
+			}
 
 			string dllPath = GetDLLPath(originalModInstance.GetType());
 
@@ -453,8 +555,19 @@ namespace ResoniteHotReloadLib
 				return;
 			}
 
+			Debug("Found the DLL.");
+
+			// Begin the actual reload process
+
+			Msg("Removing hot reload menu option...");
+			RemoveMenuOption(HOT_RELOAD_OPTIONS_PATH, GetReloadString(originalModInstance));
+
+			Msg("Calling BeforeHotReload method...");
+			unloadMethod.Invoke(null, new object[] { });
+
 			Debug("Loading the new assembly...");
 
+			// Reflection for mono.cecil because these are non-public
 			var assemblyDefinition = AssemblyDefinition_ReadAssembly.Invoke(null, new object[] { dllPath });
 			var assemblyNameDefinition = AssemblyDefinition_Name.GetValue(assemblyDefinition);
 			var assemblyNameDefinitionName = AssemblyNameDefinition_Name.GetValue(assemblyNameDefinition);
@@ -465,8 +578,17 @@ namespace ResoniteHotReloadLib
 
 			Msg("Loaded assembly: " + assembly.FullName);
 
-			Msg("Initializing and registering new ResoniteMod with RML...");
-			ResoniteMod newResoniteMod = InitializeAndRegisterMod(originalModInstance, dllPath, assembly);
+			ResoniteMod newResoniteMod = null;
+			if (IsMonkeyLoaderModType(unloadType))
+			{
+				Msg("Initializing and registering new ResoniteMod with MonkeyLoader RML...");
+				newResoniteMod = InitializeAndRegisterMod_MonkeyLoaderRML(originalModInstance, dllPath, assembly);
+			}
+			else
+			{
+				Msg("Initializing and registering new ResoniteMod with RML...");
+				newResoniteMod = InitializeAndRegisterMod(originalModInstance, dllPath, assembly);
+			}
 
 			if (newResoniteMod != null)
 			{
@@ -475,29 +597,32 @@ namespace ResoniteHotReloadLib
 				{
 					if (newResoniteMod.GetConfiguration() != null)
 					{
-						if (originalModInstance.GetConfiguration() != null)
+						if (!IsMonkeyLoaderModType(unloadType))
 						{
-							Msg("Updating config definition...");
-							ModConfigurationDefinition newConfigDefinition = GetConfigDefinition(newResoniteMod.GetConfiguration());
-							UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
-						}
-						else
-						{
-							Warn("Original mod config is null! Replacing it with new config...");
-							if (!SetConfig(originalModInstance, newResoniteMod.GetConfiguration()))
+							if (originalModInstance.GetConfiguration() != null)
 							{
-								Error("Could not set config!");
+								Msg("Updating config definition...");
+								var newConfigDefinition = (ModConfigurationDefinition)ModConfiguration_Definition.GetValue(newResoniteMod.GetConfiguration());
+								UpdateConfigWithNewDefinition(originalModInstance.GetConfiguration(), newConfigDefinition);
+							}
+							else
+							{
+								Warn("Original mod config is null! Replacing it with new config...");
+								if (!SetConfig(originalModInstance, newResoniteMod.GetConfiguration()))
+								{
+									Error("Could not set config!");
+									return;
+								}
+							}
+
+							// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
+							// If this fails it might not be a huge problem, but just to be safe I will stop the reload
+							Debug("Setting new resonite mod config to be null...");
+							if (!SetConfig(newResoniteMod, null))
+							{
+								Error("Could not set config to be null!");
 								return;
 							}
-						}
-
-						// Stop the new resonite mod from autosaving its config on shutdown (because its config will have outdated values since it is not being used)
-						// If this fails it might not be a huge problem, but just to be safe I will stop the reload
-						Debug("Setting new resonite mod config to be null...");
-						if (!SetConfig(newResoniteMod, null))
-						{
-							Error("Could not set config to be null!");
-							return;
 						}
 					}
 					else
@@ -519,13 +644,19 @@ namespace ResoniteHotReloadLib
 					AddReloadMenuOption(newResoniteMod);
 
 					Msg("Calling OnHotReload method...");
-
-					// Sending the original mod instance here just to remain compatible with ResoniteModSettings
-					method.Invoke(null, new object[] { originalModInstance });
+					if (IsMonkeyLoaderModType(unloadType))
+					{
+						method.Invoke(null, new object[] { newResoniteMod });
+					}
+					else
+					{
+						// Sending the original mod instance here just to remain compatible with ResoniteModSettings
+						method.Invoke(null, new object[] { originalModInstance });
+					}
 				}
 				else
 				{
-					Error("OnHotReload method is null!");
+					Error("OnHotReload method is null in new assembly!");
 				}
 			}
 			else
