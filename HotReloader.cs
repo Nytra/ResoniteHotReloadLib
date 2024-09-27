@@ -1,4 +1,5 @@
-﻿using FrooxEngine;
+﻿using Elements.Assets;
+using FrooxEngine;
 using HarmonyLib;
 using MonkeyLoader.Meta;
 using MonkeyLoader.NuGet;
@@ -20,78 +21,51 @@ using Zio.FileSystems;
 
 namespace ResoniteHotReloadLib
 {
-	//internal sealed class HotReloadMod : Mod
-	//{
-	//	private static readonly Type _resoniteModType = typeof(ResoniteMod);
-	//	private static readonly Uri _rmlIconUrl = new("https://avatars.githubusercontent.com/u/145755526");
+	internal sealed class HotReloadedMonkeyMod : Mod
+	{
+		private static readonly Uri _rmlIconUrl = new("https://avatars.githubusercontent.com/u/145755526");
 
-	//	///<inheritdoc/>
-	//	public override string Description => "Hot Reloaded RML Mod";
+		public override string Description => "Hot Reloaded RML Mod";
 
-	//	/// <summary>
-	//	/// Map of Assembly to ResoniteMod, used for logging purposes
-	//	/// </summary>
-	//	//internal static readonly Dictionary<Assembly, ResoniteMod> AssemblyLookupMap = new();
+		public override IFileSystem FileSystem { get; }
 
-	//	///<inheritdoc/>
-	//	public override IFileSystem FileSystem { get; }
+		public override UPath? IconPath => null;
 
-	//	///<inheritdoc/>
-	//	public override UPath? IconPath => null;
+		public override Uri? IconUrl => _rmlIconUrl;
 
-	//	///<inheritdoc/>
-	//	public override Uri? IconUrl => _rmlIconUrl;
+		public override PackageIdentity Identity { get; }
 
-	//	///<inheritdoc/>
-	//	public override PackageIdentity Identity { get; }
+		public override Uri? ProjectUrl { get; }
 
-	//	///<inheritdoc/>
-	//	public override Uri? ProjectUrl { get; }
+		public override string? ReleaseNotes => null;
 
-	//	///<inheritdoc/>
-	//	public override string? ReleaseNotes => null;
+		public override bool SupportsHotReload => false;
 
-	//	///<inheritdoc/>
-	//	public override bool SupportsHotReload => true;
+		public override NuGetFramework TargetFramework => NuGetHelper.Framework;
 
-	//	///<inheritdoc/>
-	//	public override NuGetFramework TargetFramework => NuGetHelper.Framework;
+		public HotReloadedMonkeyMod(ResoniteMod resoniteMod, string id, MonkeyLoader.MonkeyLoader loader)
+			: base(loader, null, false)
+		{
+			FileSystem = new MemoryFileSystem() { Name = $"Dummy FileSystem for {id}" };
 
-	//	///<inheritdoc/>
-	//	public HotReloadMod(MonkeyLoader.MonkeyLoader loader, string? location, bool isGamePack)
-	//		: base(loader, location, isGamePack)
-	//	{
-	//		FileSystem = new MemoryFileSystem() { Name = $"Dummy FileSystem for {Path.GetFileNameWithoutExtension(location)}" };
+			NuGetVersion version;
+			if (!NuGetVersion.TryParse(resoniteMod.Version, out version!))
+				version = new(1, 0, 0);
 
-	//		//var assembly = Assembly.LoadFile(location);
-	//		var modType = assembly.GetTypes().Single(_resoniteModType.IsAssignableFrom);
-	//		var resoniteMod = (ResoniteMod)Activator.CreateInstance(modType);
+			Identity = new PackageIdentity(id, version);
 
-	//		//AssemblyLookupMap.Add(assembly, resoniteMod);
+			if (Uri.TryCreate(resoniteMod.Link, UriKind.Absolute, out var projectUrl))
+				ProjectUrl = projectUrl;
 
-	//		NuGetVersion version;
-	//		if (!NuGetVersion.TryParse(resoniteMod.Version, out version!))
-	//			version = new(1, 0, 0);
+			authors.Add(resoniteMod.Author);
+			monkeys.Add((IMonkey)resoniteMod);
+		}
 
-	//		Identity = new PackageIdentity(resoniteMod.GetType().Assembly.GetName().Name, version);
+		public override bool OnLoadEarlyMonkeys() => true;
 
-	//		resoniteMod.Mod = this;
+		public override bool OnLoadMonkeys() => true;
+	}
 
-	//		if (Uri.TryCreate(resoniteMod.Link, UriKind.Absolute, out var projectUrl))
-	//			ProjectUrl = projectUrl;
-
-	//		authors.Add(resoniteMod.Author);
-	//		monkeys.Add((IMonkey)resoniteMod);
-
-	//		// Add dependencies after refactoring MKL
-	//		//foreach (var referencedAssembly in assembly.GetReferencedAssemblies())
-	//		//    dependencies.Add(referencedAssembly.Name, new DependencyReference())
-	//	}
-
-	//	protected override bool OnLoadEarlyMonkeys() => true;
-
-	//	protected override bool OnLoadMonkeys() => true;
-	//}
 	public static class HotReloader
 	{
 		// list of mods setup for hot reloading
@@ -132,6 +106,7 @@ namespace ResoniteHotReloadLib
 		// MonkeyLoader RML
 		static Type RmlMod = typeof(ModLoader).Assembly.GetTypes().FirstOrDefault(type => type.Name == "RmlMod");
 		static FieldInfo RmlMod_AssemblyLookupMap = AccessTools.Field(RmlMod, "AssemblyLookupMap");
+		static PropertyInfo ResoniteModBase_Mod = AccessTools.Property(typeof(ResoniteModBase), "Mod");
 
 		private static bool IsMonkeyLoaderModType(Type t)
 		{
@@ -220,7 +195,6 @@ namespace ResoniteHotReloadLib
 
 			Debug("Creating new AssemblyFile instance...");
 			var newAssemblyFile = (AssemblyFile)AccessTools.CreateInstance(AssemblyFile);
-			if (newAssemblyFile == null) return null;
 
 			Debug("Setting AssemblyFile values...");
 			if (!TrySetFieldValue(AssemblyFile_File, newAssemblyFile, newDllPath)) return null;
@@ -253,27 +227,22 @@ namespace ResoniteHotReloadLib
 		{
 			Debug("Begin InitializeAndRegisterMod_MonkeyLoaderRML.");
 
-			var modProp = AccessTools.Property(typeof(ResoniteModBase), "Mod");
-			var mod = (Mod)modProp.GetValue(originalModInstance);
+			var originalMod = (Mod)ResoniteModBase_Mod.GetValue(originalModInstance);
 
-			Type newModType = newAssembly.GetTypes().Single(typeof(ResoniteMod).IsAssignableFrom);
+			var lastMod = originalMod.Loader.Mods.FirstOrDefault(m => m.Id == originalMod.Id);
 
-			var newResoniteMod = (ResoniteMod)Activator.CreateInstance(newModType);
+			originalMod.Loader.ShutdownMod(lastMod);
 
-			modProp.SetValue(newResoniteMod, mod);
+			Type newResoniteModType = newAssembly.GetTypes().FirstOrDefault(typeof(ResoniteMod).IsAssignableFrom);
+			if (newResoniteModType == null) return null;
 
-			originalModInstance.GetConfiguration(); // initialize lazy config
+			var newResoniteMod = (ResoniteMod)AccessTools.CreateInstance(newResoniteModType);
 
-			var section = mod.Config._sections.FirstOrDefault(s => s.Id == "values");
-			if (section != null)
-			{
-				foreach (var key in section.keys)
-				{
-					mod.Config._configurationItemDefinitionsSelfMap.Remove(key.AsUntyped);
-				}
+			var newMod = new HotReloadedMonkeyMod(newResoniteMod, originalMod.Id, originalMod.Loader);
 
-				mod.Config._sections.Remove(section);
-			}
+			ResoniteModBase_Mod.SetValue(newResoniteMod, newMod);
+
+			originalMod.Loader.AddMod(newMod);
 
 			var assemblyLookupMap = (IDictionary)RmlMod_AssemblyLookupMap.GetValue(null);
 			if (assemblyLookupMap != null)
@@ -281,11 +250,12 @@ namespace ResoniteHotReloadLib
 				assemblyLookupMap.Add(newAssembly, newResoniteMod);
 			}
 
-			//var conf2 = newResoniteMod.GetConfiguration(); // initialize lazy config
-			//var section2 = mod.Config._sections.First(s => s.Id == "values");
-			//foreach (var thingy2 in section2.keys)
+			//var localeResource = Userspace.UserspaceWorld.GetCoreLocale().Asset.Data;
+			//var localeData = new LocaleData();
+			//localeData.LocaleCode = localeResource.;
+			//foreach (var key in newResoniteMod.GetConfiguration().ConfigurationItemDefinitions)
 			//{
-			//	Engine.Current.WorldManager.FocusedWorld.GetCoreLocale().Asset.Data
+			//	//localeResource.LoadDataAdditively()
 			//}
 
 			return newResoniteMod;
