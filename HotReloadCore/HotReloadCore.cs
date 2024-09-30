@@ -108,7 +108,7 @@ namespace ResoniteHotReloadLib
 			return $"({count}) Reload {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}";
 		}
 
-		internal static void AddReloadMenuOption(ResoniteMod mod, Action pressedAction)
+		internal static void AddReloadMenuOption(ResoniteMod mod, Action reloadAction)
 		{
 			Debug("Begin AddReloadMenuOption");
 			if (!Engine.Current.IsInitialized)
@@ -128,7 +128,7 @@ namespace ResoniteHotReloadLib
 
 					Msg($"Hot reload button pressed for mod {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}.");
 
-					pressedAction();
+					reloadAction();
 				});
 				Debug($"Added reload menu option: {reloadString}");
 			}

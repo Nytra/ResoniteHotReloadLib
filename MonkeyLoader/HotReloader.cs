@@ -1,19 +1,13 @@
-﻿using FrooxEngine;
-using HarmonyLib;
-using ResoniteModLoader;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Collections;
-using MonkeyLoader;
+﻿using HarmonyLib;
 using MonkeyLoader.Meta;
 using MonkeyLoader.NuGet;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
+using ResoniteModLoader;
+using System;
+using System.Linq;
+using System.Reflection;
 using Zio;
 using Zio.FileSystems;
 
