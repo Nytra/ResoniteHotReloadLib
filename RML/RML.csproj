@@ -45,7 +45,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>G:\SteamLibrary\steamapps\common\Resonite\rml_libs\0Harmony.dll</HintPath>
+      <HintPath>$(ResonitePath)rml_libs\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="FrooxEngine">
       <HintPath>$(ResonitePath)Resonite_Data\Managed\FrooxEngine.dll</HintPath>
