@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RML", "RML\RML.csproj", "{F
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonkeyLoader", "MonkeyLoader\MonkeyLoader.csproj", "{40C65AA5-E020-4F04-953E-F65CE80270EE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResoniteHotReloadLibCore", "ResoniteHotReloadLibCore\ResoniteHotReloadLibCore.csproj", "{4264D9C8-9239-49A5-A87C-C5EF5D9D8B40}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotReloadCore", "HotReloadCore\HotReloadCore.csproj", "{4264D9C8-9239-49A5-A87C-C5EF5D9D8B40}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -402,7 +402,7 @@ namespace ResoniteHotReloadLib
 				return;
 			}
 
-			Msg("Adding hot reload menu option...");
+			Debug("Adding hot reload menu option...");
 			AddReloadMenuOption(newModInstance, reloadAction);
 		}
 
