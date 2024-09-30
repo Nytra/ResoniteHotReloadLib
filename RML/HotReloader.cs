@@ -12,11 +12,6 @@ namespace ResoniteHotReloadLib
 {
 	public static class HotReloader
 	{
-		// list of mods setup for hot reloading
-		//static readonly List<ResoniteMod> HotReloadMods = new List<ResoniteMod>();
-		//static readonly Dictionary<ResoniteMod, int> timesHotReloaded = new Dictionary<ResoniteMod, int>();
-		//const string HOT_RELOAD_OPTIONS_PATH = "Hot Reload Mods";
-
 		static void Msg(string str) => ResoniteMod.Msg(str);
 		static void Error(string str) => ResoniteMod.Error(str);
 		static void Debug(string str) => ResoniteMod.Debug(str);
@@ -37,65 +32,9 @@ namespace ResoniteHotReloadLib
 		// ModConfiguration
 		static FieldInfo ModConfiguration_Definition = AccessTools.Field(typeof(ModConfiguration), "Definition");
 
-		//// Mono.Cecil.AssemblyDefinition
-		//static Type AssemblyDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyDefinition");
-		//static PropertyInfo AssemblyDefinition_Name = AccessTools.Property(AssemblyDefinition, "Name");
-		//static MethodInfo AssemblyDefinition_ReadAssembly = AccessTools.Method(AssemblyDefinition, "ReadAssembly", new Type[] { typeof(string) });
-		//static MethodInfo AssemblyDefinition_Write = AccessTools.Method(AssemblyDefinition, "Write", new Type[] { typeof(System.IO.Stream) });
-
-		//// Mono.Cecil.AssemblyNameDefinition
-		//static Type AssemblyNameDefinition = AccessTools.TypeByName("Mono.Cecil.AssemblyNameDefinition");
-		//static PropertyInfo AssemblyNameDefinition_Name = AccessTools.Property(AssemblyNameDefinition, "Name");
-
-		//private static void PrintTypeInfo(Type t)
-		//{
-		//	Debug("Type Assembly FullName: " + t.Assembly.FullName);
-		//	Debug("Type FullName: " + t.FullName);
-		//}
-
-		//private static string GetDLLPath(Type modInstanceType)
-		//{
-		//	string dllPath;
-
-		//	string executingAssemblyLocation = modInstanceType.Assembly.Location;
-
-		//	string hotReloadModsDir = Path.GetDirectoryName(executingAssemblyLocation) + Path.DirectorySeparatorChar + "HotReloadMods";
-
-		//	if (!Directory.Exists(hotReloadModsDir))
-		//	{
-		//		Error("HotReloadMods directory does not exist!");
-		//		return null;
-		//	}
-
-		//	dllPath = hotReloadModsDir + Path.DirectorySeparatorChar + Path.GetFileName(executingAssemblyLocation);
-
-		//	return dllPath;
-		//}
-
-		//private static bool DLLFileExists(string dllPath)
-		//{
-		//	// Borrowed from ResoniteModLoader
-		//	string[] foundFiles = Directory.EnumerateFiles(Path.GetDirectoryName(dllPath), "*.dll")
-		//		.Where(file => file.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase))
-		//		.ToArray();
-
-		//	bool found = false;
-		//	foreach (string foundFile in foundFiles)
-		//	{
-		//		if (foundFile == dllPath)
-		//		{
-		//			found = true;
-		//			break;
-		//		}
-		//	}
-
-		//	return found;
-		//}
-
 		public static void RegisterForHotReload(ResoniteMod mod)
 		{
 			HotReloadCore.RegisterForHotReload(mod, () => HotReload(mod.GetType()));
-			//HotReloadCore.AddReloadMenuOption(mod, );
 		}
 
 		// initialize the mod via RML and then register it
@@ -144,12 +83,6 @@ namespace ResoniteHotReloadLib
 
 			return newResoniteMod;
 		}
-
-		//private static ModConfigurationDefinition BuildConfigDefinition(ResoniteMod modInstance)
-		//{
-		//	var newConfigDefinition = (ModConfigurationDefinition)AccessTools.Method(typeof(ResoniteMod), "BuildConfigurationDefinition")?.Invoke(modInstance, new object[] { });
-		//	return newConfigDefinition;
-		//}
 
 		private static bool SetConfig(ResoniteMod modInstance, object newConfig)
 		{
@@ -290,38 +223,6 @@ namespace ResoniteHotReloadLib
 			return HotReloadCore.GetReloadedCountOfModType(modType);
 		}
 
-		//private static string GetReloadString(ResoniteMod mod)
-		//{
-		//	int count = GetReloadedCountOfModType(mod.GetType());
-		//	return $"({count}) Reload {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}";
-		//}
-
-		//private static void AddReloadMenuOption(ResoniteMod mod)
-		//{
-		//	Debug("Begin AddReloadMenuOption");
-		//	if (!Engine.Current.IsInitialized)
-		//	{
-		//		Engine.Current.RunPostInit(AddActionDelegate);
-		//	}
-		//	else
-		//	{
-		//		AddActionDelegate();
-		//	}
-		//	void AddActionDelegate()
-		//	{
-		//		string reloadString = GetReloadString(mod);
-		//		DevCreateNewForm.AddAction(HOT_RELOAD_OPTIONS_PATH, reloadString, (x) =>
-		//		{
-		//			x.Destroy();
-
-		//			Msg($"Hot reload button pressed for mod {mod.Name ?? "NULL"} by {mod.Author ?? "NULL"}.");
-
-		//			HotReload(mod.GetType());
-		//		});
-		//		Debug($"Added reload menu option: {reloadString}");
-		//	}
-		//}
-
 		public static bool RemoveMenuOption(string path, string optionName)
 		{
 			return HotReloadCore.RemoveMenuOption(path, optionName);
@@ -329,88 +230,6 @@ namespace ResoniteHotReloadLib
 
 		public static void HotReload(Type unloadType)
 		{
-			//if (!typeof(ResoniteMod).IsAssignableFrom(unloadType))
-			//{
-			//	Error("Unload type is not assignable from ResoniteMod!");
-			//	return;
-			//}
-
-			//Msg("Begin HotReload for type: " + unloadType.FullName);
-
-			//ResoniteMod originalModInstance = null;
-			//foreach (ResoniteMod mod in HotReloadMods)
-			//{
-			//	if (mod.GetType().FullName == unloadType.FullName)
-			//	{
-			//		originalModInstance = mod;
-			//		break;
-			//	}
-			//}
-
-			//if (originalModInstance == null)
-			//{
-			//	Error("Mod instance is null! Mod not setup for hot reload!");
-			//	return;
-			//}
-
-			//Debug("Mod instance info:");
-			//PrintTypeInfo(originalModInstance.GetType());
-			//Debug("Unload type info:");
-			//PrintTypeInfo(unloadType);
-
-			//MethodInfo unloadMethod = AccessTools.Method(unloadType, "BeforeHotReload");
-			//if (unloadMethod == null)
-			//{
-			//	Error("Unload type does not have a BeforeHotReload method!");
-			//	return;
-			//}
-
-			//MethodInfo reloadMethod = AccessTools.Method(unloadType, "OnHotReload");
-			//if (reloadMethod == null)
-			//{
-			//	Error("Unload type does not have a OnHotReload method!");
-			//	return;
-			//}
-
-			//string dllPath = GetDLLPath(originalModInstance.GetType());
-
-			//if (dllPath == null)
-			//{
-			//	Error("Could not get DLL path.");
-			//	return;
-			//}
-
-			//Debug("Expecting to find mod DLL at path: " + dllPath);
-
-			//if (!DLLFileExists(dllPath))
-			//{
-			//	Error("DLL file does not exist in HotReloadMods directory!");
-			//	return;
-			//}
-
-			//Debug("Found the DLL.");
-
-			//// Begin the actual reload process
-
-			//Msg("Removing hot reload menu option...");
-			//RemoveMenuOption(HOT_RELOAD_OPTIONS_PATH, GetReloadString(originalModInstance));
-
-			//Msg("Calling BeforeHotReload method...");
-			//unloadMethod.Invoke(null, new object[] { });
-
-			//Debug("Loading the new assembly...");
-
-			//// Reflection for mono.cecil because these are non-public
-			//var assemblyDefinition = AssemblyDefinition_ReadAssembly.Invoke(null, new object[] { dllPath });
-			//var assemblyNameDefinition = AssemblyDefinition_Name.GetValue(assemblyDefinition);
-			//var assemblyNameDefinitionName = AssemblyNameDefinition_Name.GetValue(assemblyNameDefinition);
-			//AssemblyNameDefinition_Name.SetValue(assemblyNameDefinition, (string)assemblyNameDefinitionName + "-" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
-			//var memoryStream = new MemoryStream();
-			//AssemblyDefinition_Write.Invoke(assemblyDefinition, new object[] { memoryStream });
-			//Assembly assembly = Assembly.Load(memoryStream.ToArray());
-
-			//Msg("Loaded assembly: " + assembly.FullName);
-
 			Msg("Preparing hot reload...");
 			var (assembly, originalModInstance, dllPath) = HotReloadCore.PrepareHotReload(unloadType);
 
@@ -455,13 +274,11 @@ namespace ResoniteHotReloadLib
 						Msg("Config is null for new mod.");
 					}
 
-
-					//HotReloadCore.AddReloadMenuOption(newResoniteMod, () => HotReload(newResoniteMod.GetType()));
-
 					Msg("Finalizing hot reload...");
 					HotReloadCore.FinalizeHotReload(originalModInstance, newResoniteMod, () => HotReload(newResoniteMod.GetType()));
 
 					Msg("Calling OnHotReload method...");
+
 					// Sending the original mod instance here just to remain compatible with ResoniteModSettings
 					method.Invoke(null, new object[] { originalModInstance });
 				}

@@ -51,7 +51,7 @@
       <HintPath>$(ResonitePath)Resonite_Data\Managed\FrooxEngine.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteHotReloadLibCore">
-      <HintPath>..\ResoniteHotReloadLibCore\bin\Release\ResoniteHotReloadLibCore.dll</HintPath>
+      <HintPath>..\HotReloadCore\bin\Release\ResoniteHotReloadLibCore.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteModLoader">
       <HintPath>$(ResonitePath)Libraries\ResoniteModLoader.dll</HintPath>
@@ -70,9 +70,6 @@
   <ItemGroup>
     <Compile Include="HotReloader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Krafs.Publicizer">

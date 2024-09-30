@@ -63,7 +63,7 @@
       <HintPath>$(ResonitePath)Resonite_Data\Managed\Elements.Assets.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteHotReloadLibCore">
-      <HintPath>..\ResoniteHotReloadLibCore\bin\Release\ResoniteHotReloadLibCore.dll</HintPath>
+      <HintPath>..\HotReloadCore\bin\Release\ResoniteHotReloadLibCore.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteModLoader">
       <HintPath>..\..\MonkeyLoader.GamePacks.ResoniteModLoader\MonkeyLoader.GamePacks.ResoniteModLoader\bin\Debug\net462\ResoniteModLoader.dll</HintPath>
