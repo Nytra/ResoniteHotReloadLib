@@ -6,6 +6,7 @@ using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using ResoniteModLoader;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Zio;
@@ -35,7 +36,9 @@ namespace ResoniteHotReloadLib
 
 		public override NuGetFramework TargetFramework => NuGetHelper.Framework;
 
-		public HotReloadedMonkeyMod(ResoniteMod resoniteMod, string id, MonkeyLoader.MonkeyLoader loader)
+		public Assembly ModAssembly;
+
+		public HotReloadedMonkeyMod(ResoniteMod resoniteMod, string id, MonkeyLoader.MonkeyLoader loader, Assembly assembly)
 			: base(loader, null, false)
 		{
 			FileSystem = new MemoryFileSystem() { Name = $"Dummy FileSystem for {id}" };
@@ -51,11 +54,25 @@ namespace ResoniteHotReloadLib
 
 			authors.Add(resoniteMod.Author);
 			monkeys.Add(resoniteMod);
+			ModAssembly = assembly;
 		}
 
 		public override bool OnLoadEarlyMonkeys() => true;
 
 		public override bool OnLoadMonkeys() => true;
+
+		public override bool TryResolveAssembly(MonkeyLoader.AssemblyName assemblyName, [NotNullWhenAttribute(true)] out Assembly assembly)
+		{
+			if (assemblyName.Name != ModAssembly.GetName().FullName)
+			{
+				assembly = null;
+				return false;
+			}
+
+			Logger.Debug(() => $"Resolving assembly {assemblyName.Name} to {ModAssembly.FullName} through HotReloadedMonkeyMod");
+			assembly = ModAssembly;
+			return true;
+		}
 	}
 
 	public static class HotReloader
@@ -85,7 +102,7 @@ namespace ResoniteHotReloadLib
 
 			var newResoniteMod = (ResoniteMod)AccessTools.CreateInstance(newResoniteModType);
 
-			var newMod = new HotReloadedMonkeyMod(newResoniteMod, originalMod.Id, originalMod.Loader);
+			var newMod = new HotReloadedMonkeyMod(newResoniteMod, originalMod.Id, originalMod.Loader, newAssembly);
 
 			newResoniteMod.Mod = newMod;
 
@@ -117,7 +134,9 @@ namespace ResoniteHotReloadLib
 		public static void HotReload(Type unloadType)
 		{
 			Msg("Preparing hot reload...");
-			var (assembly, originalModInstance, dllPath) = HotReloadCore.PrepareHotReload(unloadType);
+			var (memoryStream, originalModInstance, dllPath) = HotReloadCore.PrepareHotReload(unloadType);
+
+			var assembly = originalModInstance.Mod.Loader.AssemblyLoadStrategy.Load(memoryStream.ToArray());
 
 			ResoniteMod newResoniteMod = null;
 			Msg("Initializing and registering new ResoniteMod with MonkeyLoader RML...");

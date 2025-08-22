@@ -226,7 +226,9 @@ namespace ResoniteHotReloadLib
 		public static void HotReload(Type unloadType)
 		{
 			Msg("Preparing hot reload...");
-			var (assembly, originalModInstance, dllPath) = HotReloadCore.PrepareHotReload(unloadType);
+			var (memoryStream, originalModInstance, dllPath) = HotReloadCore.PrepareHotReload(unloadType);
+
+			var assembly = Assembly.Load(memoryStream.ToArray());
 
 			ResoniteMod newResoniteMod = null;
 			Msg("Initializing and registering new ResoniteMod with RML...");

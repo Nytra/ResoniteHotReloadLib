@@ -160,7 +160,7 @@ namespace ResoniteHotReloadLib
 			return false;
 		}
 
-		internal static (Assembly, ResoniteMod, string) PrepareHotReload(Type unloadType)
+		internal static (MemoryStream, ResoniteMod, string) PrepareHotReload(Type unloadType)
 		{
 			if (!typeof(ResoniteMod).IsAssignableFrom(unloadType))
 			{
@@ -230,7 +230,7 @@ namespace ResoniteHotReloadLib
 			Msg("Calling BeforeHotReload method...");
 			unloadMethod.Invoke(null, new object[] { });
 
-			Debug("Loading the new assembly...");
+			Debug("Loading the new assembly definition...");
 
 			// Reflection for mono.cecil because these are non-public
 			var assemblyDefinition = AssemblyDefinition_ReadAssembly.Invoke(null, new object[] { dllPath });
@@ -239,11 +239,10 @@ namespace ResoniteHotReloadLib
 			AssemblyNameDefinition_Name.SetValue(assemblyNameDefinition, (string)assemblyNameDefinitionName + "-" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
 			var memoryStream = new MemoryStream();
 			AssemblyDefinition_Write.Invoke(assemblyDefinition, new object[] { memoryStream });
-			Assembly assembly = Assembly.Load(memoryStream.ToArray());
 
-			Msg("Loaded assembly: " + assembly.FullName);
+			Msg("Loaded assembly definition into memory stream: " + (string)assemblyNameDefinitionName);
 
-			return (assembly, originalModInstance, dllPath);
+			return (memoryStream, originalModInstance, dllPath);
 		}
 
 		internal static void FinalizeHotReload(ResoniteMod originalModInstance, ResoniteMod newModInstance, Action reloadAction)
