@@ -24,9 +24,14 @@ Install ResoniteModLoader: https://github.com/resonite-modding-group/ResoniteMod
 
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
-You can do this with a PostBuildEvent in Visual Studio.
+You can do this with a PostBuildEvent in Visual Studio by adding this to your `.csproj` file.
 
-![Screenshot 2024-01-13 193220](https://github.com/Nytra/ResoniteHotReloadLib/assets/14206961/427f9f36-2324-450e-bb6a-044ba6071ff0)
+```
+<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="G:\SteamLibrary\steamapps\common\Resonite\rml_mods\HotReloadMods" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="G:\SteamLibrary\steamapps\common\Resonite\rml_mods" />
+</Target>
+```
 
 The reason for compiling into a separate folder is that you currently cannot overwrite the file in `rml_mods` while the game is running. So the file in `rml_mods` is used when the game first starts up and then after that the mod will be reloaded from the `HotReloadMods` directory.
 
