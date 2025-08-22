@@ -24,7 +24,7 @@ Install ResoniteModLoader: https://github.com/resonite-modding-group/ResoniteMod
 
 Make a new folder in `rml_mods` called `HotReloadMods` then compile your mod into that folder in addition to the main `rml_mods` folder.
 
-You can do this with a PostBuildEvent in Visual Studio by adding this to your `.csproj` file.
+You can do this with a PostBuildEvent in Visual Studio by adding this to your `.csproj` file:
 
 ```
 <Target Name="PostBuild" AfterTargets="PostBuildEvent">
