@@ -135,9 +135,9 @@ namespace ResoniteHotReloadLib
 						var oldValue = oldConfigKey.Value;
 						if (oldConfigKey.HasValue)
 						{
-							Debug("Found matching config key: " + newConfigKey.Name + ", Value: " + oldValue.ToString());
+							Debug($"Found matching config key with value: {newConfigKey.Name}, Value: {oldValue}");
 							var objectToValidate = oldValue;
-							if (oldValue.GetType() != newConfigKey.ValueType())
+							if (oldValue != null && oldValue.GetType() != newConfigKey.ValueType())
 							{
 								Debug("Type mismatch. Trying to convert...");
 								if (TryConvertType(oldValue, newConfigKey.ValueType(), out object converted))
